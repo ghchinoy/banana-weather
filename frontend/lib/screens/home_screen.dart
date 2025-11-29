@@ -240,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                 // Regenerate Button
-                if (!weatherProvider.isLoading && weatherProvider.city != null)
+                if (!weatherProvider.isLoading && weatherProvider.city != null && !weatherProvider.isPresetLoaded)
                   Positioned(
                     bottom: 30,
                     right: 20,

@@ -35,10 +35,16 @@ The system follows a Client-Server architecture:
 
 ### 1. Prerequisites
 *   **Google Cloud Project** with APIs enabled: Vertex AI, Maps, Cloud Run, GCS, Firestore.
-*   **Firestore Database:** Provisioned in Native mode (e.g., `banana-weather`).
+*   **Firestore Database:** Provisioned in **Native Mode** (e.g., named `banana-weather`).
 *   **GCS Bucket:** Publicly readable with CORS configured.
 
-### 2. Environment Configuration
+### 2. Service Account Setup
+Run the helper script to create the identity and grant permissions (Vertex AI, Logging, Firestore):
+```bash
+./setup_sa.sh
+```
+
+### 3. Environment Configuration
 Create a `.env` file:
 
 ```bash

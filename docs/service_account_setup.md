@@ -32,6 +32,11 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member="serviceAccount:${SA_EMAIL}" \
     --role="roles/logging.logWriter"
+
+# Grant Firestore User (for Database)
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/datastore.user"
     
 # Grant Storage Object Viewer (if you later decide to store images in GCS)
 # gcloud projects add-iam-policy-binding "$PROJECT_ID" \
