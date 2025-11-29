@@ -167,7 +167,8 @@ class WeatherProvider with ChangeNotifier {
         try {
           final jsonData = json.decode(data);
           _city = jsonData['city'];
-          _imageBase64 = jsonData['image_base64'];
+          _imageBase64 = jsonData['image_base64']; // Null if missing
+          _imageUrl = jsonData['image_url'];       // Null if missing
           _isLoading = false;
           _statusMessage = null;
           notifyListeners();

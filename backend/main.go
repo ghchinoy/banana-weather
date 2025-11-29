@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"banana-weather/api"
+	"banana-weather/pkg/database"
 	"banana-weather/pkg/genai"
 	"banana-weather/pkg/maps"
 	"banana-weather/pkg/storage"
@@ -39,14 +40,20 @@ func main() {
 	storageService, err := storage.NewService(context.Background())
 	if err != nil {
 		log.Printf("Warning: Storage service failed to initialize (Check GENMEDIA_BUCKET): %v", err)
-		// Non-fatal for now, as Image-only mode still works? 
-		// Actually, new feature requires it. Let's warn but allow start for legacy compatibility if needed.
 	}
+
+	// Database Service
+	dbService, err := database.NewClient(context.Background())
+	if err != nil {
+		log.Fatalf("FATAL: Database service failed to initialize. Check FIRESTORE_DATABASE. Error: %v", err)
+	}
+	defer dbService.Close()
 
 	handler := &api.Handler{
 		Maps:    mapsService,
 		GenAI:   genaiService,
 		Storage: storageService,
+		DB:      dbService,
 	}
 
 	r := chi.NewRouter()

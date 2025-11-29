@@ -54,13 +54,19 @@ if [ -z "$GENMEDIA_BUCKET" ]; then
   echo "Using default bucket name: $GENMEDIA_BUCKET"
 fi
 
-# 4. Check for Required API Keys
+# 4. Resolve Firestore Database
+if [ -z "$FIRESTORE_DATABASE" ]; then
+  FIRESTORE_DATABASE="banana-weather"
+  echo "Using default firestore database: $FIRESTORE_DATABASE"
+fi
+
+# 5. Check for Required API Keys
 if [ -z "$GOOGLE_MAPS_API_KEY" ]; then
   echo "Error: Missing GOOGLE_MAPS_API_KEY in .env"
   exit 1
 fi
 
-# 5. Build Frontend
+# 6. Build Frontend
 echo "🎨 Building Frontend (Flutter Web) for deployment..."
 (cd frontend && flutter clean && flutter pub get && flutter build web)
 if [ $? -ne 0 ]; then
@@ -68,7 +74,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 6. Deploy
+# 7. Deploy
 # Resolve Service Account (Optional)
 SA_NAME="${SERVICE_NAME}-sa"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -76,6 +82,7 @@ SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 echo "Deploying $SERVICE_NAME to $REGION in project $PROJECT_ID..."
 echo "GenAI Location: $LOCATION"
 echo "Bucket: $GENMEDIA_BUCKET"
+echo "Firestore DB: $FIRESTORE_DATABASE"
 
 ARGS=(
   "$SERVICE_NAME"
@@ -83,7 +90,7 @@ ARGS=(
   "--project" "$PROJECT_ID"
   "--region" "$REGION"
   "--allow-unauthenticated"
-  "--set-env-vars" "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$LOCATION,GENMEDIA_BUCKET=$GENMEDIA_BUCKET"
+  "--set-env-vars" "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$LOCATION,GENMEDIA_BUCKET=$GENMEDIA_BUCKET,FIRESTORE_DATABASE=$FIRESTORE_DATABASE"
 )
 
 # If you created a specific SA, uncomment the line below:

@@ -9,6 +9,7 @@ digraph BananaWeatherBackend {
         
         CloudRun [label="Cloud Run Service\n(Go Server)", shape=box3d, fillcolor="#e1f5fe"];
         GCS [label="Cloud Storage\n(Bucket)", shape=cylinder, fillcolor="#e0e0e0"];
+        Firestore [label="Firestore\n(Database)", shape=cylinder, fillcolor="#fff9c4"];
         VertexAI [label="Vertex AI\n(Models)", shape=hexagon, fillcolor="#fff3e0"];
         MapsAPI [label="Google Maps Platform", shape=component, fillcolor="#e8f5e9"];
     }
@@ -27,6 +28,7 @@ digraph BananaWeatherBackend {
             PkgGenAI [label="pkg/genai"];
             PkgMaps [label="pkg/maps"];
             PkgStorage [label="pkg/storage"];
+            PkgDB [label="pkg/database"];
         }
     }
 
@@ -40,7 +42,8 @@ digraph BananaWeatherBackend {
 
     // Handler Dependencies
     Handler -> PkgMaps [label="Resolve Location"];
-    Handler -> PkgGenAI [label="Generate Content"];
+    Handler -> PkgDB [label="Check Cache (TTL)"];
+    Handler -> PkgGenAI [label="Generate Content\n(If Cache Miss)"];
     Handler -> PkgStorage [label="Persist Assets"];
 
     // External Calls
@@ -48,10 +51,12 @@ digraph BananaWeatherBackend {
     
     PkgGenAI -> VertexAI [label="Gemini 3 Pro (Img)\nVeo 3.1 (Vid)"];
     
-    PkgStorage -> GCS [label="Upload Image/Video\nRead Presets"];
+    PkgStorage -> GCS [label="Upload Image/Video"];
+    PkgDB -> Firestore [label="Upsert/Get Locations"];
     
     // Data Flow
-    VertexAI -> PkgGenAI [label="Inline Bytes / GCS URI"];
+    VertexAI -> PkgGenAI [label="Content"];
     PkgGenAI -> Handler [label="Results"];
+    Handler -> PkgDB [label="Upsert Cache"];
     Handler -> User [label="SSE Stream\n(Status, URL)"];
 }

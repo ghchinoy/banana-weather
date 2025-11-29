@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"banana-weather/pkg/database"
 	"banana-weather/pkg/genai"
 	"banana-weather/pkg/maps"
 	"banana-weather/pkg/storage"
@@ -16,42 +18,38 @@ type Handler struct {
 	Maps    *maps.Service
 	GenAI   *genai.Service
 	Storage *storage.Service
+	DB      *database.Client
 }
 
 type WeatherResponse struct {
 	City        string `json:"city"`
-	ImageBase64 string `json:"image_base64"`
+	ImageBase64 string `json:"image_base64,omitempty"`
+	ImageURL    string `json:"image_url,omitempty"`
 }
 
-type Preset struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Category string `json:"category"`
-	ImageURL string `json:"image_url"`
-	VideoURL string `json:"video_url"`
+func sanitizeID(s string) string {
+	var result []rune
+	for _, r := range strings.ToLower(s) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			result = append(result, r)
+		} else {
+			result = append(result, '_')
+		}
+	}
+	return string(result)
 }
 
 func (h *Handler) HandleGetPresets(w http.ResponseWriter, r *http.Request) {
-	// Try to read presets.json from GCS
-	data, err := h.Storage.ReadObject(r.Context(), "presets.json")
+	// Fetch from Firestore
+	presets, err := h.DB.GetPresets(r.Context())
 	if err != nil {
-		// If error (e.g. not found), return mock/empty for now
-		log.Printf("Failed to read presets.json (using mock): %v", err)
-		mock := []Preset{
-			{
-				ID:       "ft_collins",
-				Name:     "Fort Collins, CO",
-				ImageURL: "https://storage.googleapis.com/generative-bazaar-001-banana-weather/image_1764375772967339950.png", // Example from logs
-				VideoURL: "https://storage.googleapis.com/generative-bazaar-001-banana-weather/videos/535901273950979597/sample_0.mp4",
-			},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mock)
+		log.Printf("Failed to get presets from DB: %v", err)
+		http.Error(w, "Failed to fetch presets", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
+	json.NewEncoder(w).Encode(presets)
 }
 
 func (h *Handler) HandleGetWeather(w http.ResponseWriter, r *http.Request) {
@@ -114,10 +112,30 @@ func (h *Handler) HandleGetWeather(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Resolved location to: %s", formattedCity)
 	sendEvent("status", "Found location: "+formattedCity)
 
+	// --- CACHE CHECK ---
+	locID := sanitizeID(formattedCity)
+	cachedLoc, err := h.DB.GetLocation(r.Context(), locID)
+	if err == nil && cachedLoc != nil && time.Since(cachedLoc.LastUpdated) < 3*time.Hour {
+		log.Printf("Cache Hit for %s", formattedCity)
+		sendEvent("status", "Loading cached forecast...")
+		
+		resp := WeatherResponse{
+			City:     formattedCity,
+			ImageURL: cachedLoc.ImageURL,
+		}
+		jsonData, _ := json.Marshal(resp)
+		sendEvent("result", string(jsonData))
+		
+		if cachedLoc.VideoURL != "" {
+			sendEvent("video", cachedLoc.VideoURL)
+		}
+		return
+	}
+
 	// 2. Generate Image
 	sendEvent("status", fmt.Sprintf("Getting a banana image of the weather for %s...", formattedCity))
 	
-	// Use formattedCity to ensure the AI gets the full context (e.g. "Paris, TX" vs "Paris, France")
+	// Use formattedCity to ensure the AI gets the full context
 	imgBase64, err := h.GenAI.GenerateImage(r.Context(), formattedCity, "")
 	if err != nil {
 		log.Printf("Error generating image for '%s': %v", formattedCity, err)
@@ -126,11 +144,11 @@ func (h *Handler) HandleGetWeather(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("Successfully generated image for: %s", formattedCity)
 
+	// Send Image to Frontend immediately (Base64)
 	resp := WeatherResponse{
 		City:        formattedCity,
 		ImageBase64: imgBase64,
 	}
-
 	jsonData, _ := json.Marshal(resp)
 	sendEvent("result", string(jsonData))
 
@@ -144,16 +162,25 @@ func (h *Handler) HandleGetWeather(w http.ResponseWriter, r *http.Request) {
 
 	// Upload Image
 	fileName := fmt.Sprintf("image_%d.png", time.Now().UnixNano())
-	gsURI, _, err := h.Storage.UploadImage(r.Context(), imgBase64, fileName)
+	gsURI, publicImageURL, err := h.Storage.UploadImage(r.Context(), imgBase64, fileName)
 	if err != nil {
 		log.Printf("Failed to upload image for video gen: %v", err)
-		// Don't send error event, just stop, as user already has image
 		return
 	}
 
+	// Upsert DB with Image URL (Partial Save)
+	currentLoc := database.Location{
+		ID:        locID,
+		Name:      formattedCity,
+		CityQuery: formattedCity,
+		ImageURL:  publicImageURL,
+		IsPreset:  false,
+	}
+	h.DB.UpsertLocation(r.Context(), currentLoc)
+
 	sendEvent("status", "Animating (Veo 3.1)... this may take a minute.")
 
-	// Call Veo (Returns GS URI now)
+	// Call Veo
 	prompt := "The camera moves in parallax as the elements in the image move naturally, while the forecast data—the bold title remain fixed."
 	videoGsURI, err := h.GenAI.GenerateVideo(r.Context(), gsURI, prompt)
 	if err != nil {
@@ -165,15 +192,12 @@ func (h *Handler) HandleGetWeather(w http.ResponseWriter, r *http.Request) {
 	sendEvent("status", "Finalizing video...")
 
 	// Convert gs://bucket/path to https://storage.googleapis.com/bucket/path
-	// Simple replacement works because the bucket is configured as public.
-	// Format: gs://bucket/videos/xyz.mp4 -> https://storage.googleapis.com/bucket/videos/xyz.mp4
-	// Note: If the output URI format is different, we might need parsing. 
-	// Assuming standard OutputGCSURI behavior.
-	
-	// Safer: Use storage client helper? Or just string replace.
-	// String replace is robust for standard GCS.
 	publicVideoURL := "https://storage.googleapis.com/" + videoGsURI[5:] // Strip gs://
 
 	log.Printf("Video available at: %s", publicVideoURL)
 	sendEvent("video", publicVideoURL)
+
+	// Final Upsert with Video URL
+	currentLoc.VideoURL = publicVideoURL
+	h.DB.UpsertLocation(r.Context(), currentLoc)
 }
