@@ -44,3 +44,9 @@ Thumbs.db
 .beads/beads.db-wal
 
 .commit.txt
+
+# gemini-cli settings
+.gemini/
+
+# GitHub App credentials
+gha-creds-*.json
