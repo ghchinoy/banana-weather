@@ -77,6 +77,11 @@ We use the `bd` (Beads) tool for all issue tracking.
         *   `P0`: Critical / Blocker.
         *   `P1`: Core Feature.
         *   `P2`: Enhancement / Polish.
+    *   **Release Management:**
+        *   **Changelog Generation:** Run this command to generate `CHANGELOG.md` from closed tasks:
+            ```bash
+            bd list --status closed --json | jq -r 'sort_by(.closed_at) | reverse | map(select(.closed_at != null)) | group_by(.closed_at[0:10]) | .[] | "## " + (.[0].closed_at[0:10]) + "\n" + (map("- " + .title + " (" + .id + ")") | join("\n")) + "\n"' > CHANGELOG.md
+            ```
 
 ### Go (Backend)
 *   **Structure:** `pkg/` for business logic (GenAI, Maps, Storage), `api/` for HTTP handlers.

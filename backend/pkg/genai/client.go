@@ -53,6 +53,7 @@ func NewService(ctx context.Context) (*Service, error) {
 
 // GenerateImage generates a 9:16 image for the given city.
 func (s *Service) GenerateImage(ctx context.Context, city string, extraContext string) (string, error) {
+	// a clever prompt inspired by @dotey https://x.com/dotey/status/1993729800922341810?s=20
 	basePrompt := `Present a clear, 45° top-down view of a vertical (9:16) isometric miniature 3D cartoon scene, highlighting iconic landmarks centered in the composition to showcase precise and delicate modeling.
 
 The scene features soft, refined textures with realistic PBR materials and gentle, lifelike lighting and shadow effects. Weather elements are creatively integrated into the urban architecture, establishing a dynamic interaction between the city's landscape and atmospheric conditions, creating an immersive weather ambiance.
@@ -71,7 +72,7 @@ Please retrieve current weather conditions for the specified city before renderi
 		prompt = fmt.Sprintf("%s\n\nCity name: %s", basePrompt, city)
 	}
 
-	// Nano Banana Pro corresponds to 'gemini-3-pro-image-preview' or similar.
+	// Nano Banana Pro corresponds to 'gemini-3-pro-image-preview'
 	model := "gemini-3-pro-image-preview"
 
 	log.Printf("Generating image for city: %s using model: %s (GenerateContent)", city, model)
@@ -104,11 +105,17 @@ Please retrieve current weather conditions for the specified city before renderi
 	return "", fmt.Errorf("no image data found in response")
 }
 
+const DefaultVideoPrompt = "The camera moves in parallax as the elements in the image move naturally, while the forecast data—the bold title—remains fixed."
+
 // GenerateVideo generates a 9:16 video using Veo 3.1 Fast.
 // Returns: GS URI (string) or error.
 func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, prompt string) (string, error) {
 	model := "veo-3.1-fast-generate-preview"
 	
+	if prompt == "" {
+		prompt = DefaultVideoPrompt
+	}
+
 	log.Printf("Generating video with model %s. Input: %s", model, inputImageURI)
 
 	// Construct the image object

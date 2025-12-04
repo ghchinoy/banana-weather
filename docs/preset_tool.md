@@ -15,7 +15,7 @@ go run cmd/generate_preset/main.go [flags]
 
 | Flag | Description | Required? | Example |
 | :--- | :--- | :--- | :--- |
-| `-csv` | Path to a CSV file for batch processing. | No | `presets.csv` |
+| `-csv` | Path to a CSV file for batch processing. | No | `presets_expanded.csv` |
 | `-force` | Overwrite existing presets with the same ID. If false, it only patches metadata. | No | `true` |
 | `-city` | (Single Mode) The query passed to the prompt. | Yes* | `"Carthage, Arrakis"` |
 | `-context` | (Single Mode) Additional context injected into the prompt. | No | `"Dune universe..."` |
@@ -38,14 +38,12 @@ winterfell,"Winterfell",Winterfell,Game of Thrones,"Snowy castle, Stark"
 
 ## Workflow
 
-1.  **Init:** Connects to Vertex AI and GCS using credentials from `.env`.
-2.  **Check Registry:** Reads existing `presets.json`.
+1.  **Init:** Connects to Vertex AI, Firestore, and GCS using credentials from `.env`.
+2.  **Check Registry:** Checks `Firestore` for existing location ID.
     *   If ID exists and `-force` is false: Updates Metadata (Name, Category) but **skips generation**.
 3.  **Generate Image:** Calls Gemini 3 Pro Image with the city and context.
 4.  **Upload:** Saves the PNG to GCS.
 5.  **Generate Video:** Calls Veo 3.1 Fast with the GCS Image URI.
 6.  **Output:** Veo writes the video directly to GCS.
 7.  **Registry Update:**
-    *   Reads `gs://bucket/presets.json`.
-    *   Appends or Updates the entry.
-    *   Overwrites the file in GCS.
+    *   Upserts the Location document in **Firestore**.

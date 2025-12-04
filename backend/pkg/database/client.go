@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"cloud.google.com/go/firestore/apiv1/firestorepb"
 	"google.golang.org/api/iterator"
 )
 
@@ -106,4 +107,108 @@ func (c *Client) GetLocation(ctx context.Context, id string) (*Location, error) 
 		return nil, err
 	}
 	return &loc, nil
+}
+
+// -- Admin Methods --
+
+type Stats struct {
+	TotalLocations int64
+	Presets        int64
+	UserGenerated  int64
+	LastUpdated    time.Time
+}
+
+// GetStats returns aggregate statistics about the locations collection.
+func (c *Client) GetStats(ctx context.Context) (*Stats, error) {
+	coll := c.fs.Collection("locations")
+
+	// 1. Total Count
+	// NewAggregationQuery needs addressable Query
+	qTotal := coll.Query
+	aggTotal := qTotal.NewAggregationQuery().WithCount("total")
+	resTotal, err := aggTotal.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count total: %w", err)
+	}
+	var total int64
+	if val, ok := resTotal["total"]; ok {
+		if v, ok := val.(*firestorepb.Value); ok {
+			total = v.GetIntegerValue()
+		} else if v, ok := val.(int64); ok {
+			total = v
+		}
+	}
+
+	// 2. Preset Count
+	qPresets := coll.Where("is_preset", "==", true)
+	aggPresets := qPresets.NewAggregationQuery().WithCount("count")
+	resPresets, err := aggPresets.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count presets: %w", err)
+	}
+	
+	var presets int64
+	if val, ok := resPresets["count"]; ok {
+		if v, ok := val.(*firestorepb.Value); ok {
+			presets = v.GetIntegerValue()
+		} else if v, ok := val.(int64); ok {
+			presets = v
+		}
+	}
+
+	// 3. Most Recent Update
+	var last time.Time
+	iter := coll.OrderBy("last_updated", firestore.Desc).Limit(1).Documents(ctx)
+	doc, err := iter.Next()
+	if err == nil {
+		var loc Location
+		if err := doc.DataTo(&loc); err == nil {
+			last = loc.LastUpdated
+		}
+	} else if err != iterator.Done {
+		log.Printf("Warning: failed to get last updated: %v", err)
+	}
+
+	return &Stats{
+		TotalLocations: total,
+		Presets:        presets,
+		UserGenerated:  total - presets,
+		LastUpdated:    last,
+	}, nil
+}
+
+// ListLocations returns a list of locations, optionally filtered and limited.
+// filterType: "all", "preset", "user"
+func (c *Client) ListLocations(ctx context.Context, limit int, filterType string) ([]Location, error) {
+	query := c.fs.Collection("locations").OrderBy("last_updated", firestore.Desc)
+
+	switch filterType {
+	case "preset":
+		query = query.Where("is_preset", "==", true)
+	case "user":
+		query = query.Where("is_preset", "==", false)
+	}
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	iter := query.Documents(ctx)
+	var locs []Location
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var l Location
+		if err := doc.DataTo(&l); err != nil {
+			log.Printf("Skipping unparseable doc %s: %v", doc.Ref.ID, err)
+			continue
+		}
+		locs = append(locs, l)
+	}
+	return locs, nil
 }

@@ -180,9 +180,8 @@ func (h *Handler) HandleGetWeather(w http.ResponseWriter, r *http.Request) {
 
 	sendEvent("status", "Animating (Veo 3.1)... this may take a minute.")
 
-	// Call Veo
-	prompt := "The camera moves in parallax as the elements in the image move naturally, while the forecast data—the bold title remain fixed."
-	videoGsURI, err := h.GenAI.GenerateVideo(r.Context(), gsURI, prompt)
+	// Call Veo (Use default prompt in pkg/genai)
+	videoGsURI, err := h.GenAI.GenerateVideo(r.Context(), gsURI, "")
 	if err != nil {
 		log.Printf("Veo generation failed: %v", err)
 		sendEvent("error", "Video generation failed (Beta). Enjoy the image!")

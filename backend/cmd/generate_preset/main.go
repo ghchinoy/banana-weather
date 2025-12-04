@@ -174,8 +174,7 @@ func processPreset(ctx context.Context, gs *genai.Service, ss *storage.Service, 
 
 	// 3. Generate Video
 	log.Printf("Generating video (Veo)...")
-	videoPrompt := "The camera moves in parallax as the elements in the image move naturally, while the forecast data—the bold title remain fixed."
-	videoGsURI, err := gs.GenerateVideo(ctx, gsImageURI, videoPrompt)
+	videoGsURI, err := gs.GenerateVideo(ctx, gsImageURI, "")
 	if err != nil {
 		return "", "", fmt.Errorf("video gen failed: %w", err)
 	}
