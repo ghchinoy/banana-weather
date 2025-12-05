@@ -1,6 +1,7 @@
 # Binaries and build artifacts
 backend/server
 backend/main
+backend/generate_preset
 *.exe
 *.dll
 *.so
