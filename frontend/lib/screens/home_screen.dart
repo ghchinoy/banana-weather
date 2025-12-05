@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 import '../providers/weather_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/preset_drawer.dart';
+import '../utils/download_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -239,12 +240,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                // Regenerate Button
+                // Regenerate Button (Bottom Right)
                 if (!weatherProvider.isLoading && weatherProvider.city != null && !weatherProvider.isPresetLoaded)
                   Positioned(
                     bottom: 30,
                     right: 20,
                     child: FloatingActionButton.small(
+                      heroTag: "btn_regenerate",
                       onPressed: () {
                         weatherProvider.fetchWeather(city: weatherProvider.city!);
                       },
@@ -252,6 +254,40 @@ class _HomeScreenState extends State<HomeScreen> {
                       foregroundColor: Colors.white,
                       elevation: 0,
                       child: const Icon(Icons.refresh),
+                    ),
+                  ),
+
+                // Download Button (Bottom Left)
+                if (weatherProvider.videoUrl != null)
+                  Positioned(
+                    bottom: 30,
+                    left: 20,
+                    child: FloatingActionButton.small(
+                      heroTag: "btn_download",
+                      onPressed: () {
+                        final city = weatherProvider.city?.replaceAll(' ', '_') ?? "banana_weather";
+                        
+                        // Use creation date or fallback to now
+                        final dt = weatherProvider.lastUpdated ?? DateTime.now();
+                        final date = dt.toIso8601String().substring(0, 10); // YYYY-MM-DD
+                        
+                        final filename = "${city}_$date.mp4";
+                        
+                        // Optional: Show a snackbar or status
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Downloading $filename..."),
+                            duration: const Duration(seconds: 2),
+                            backgroundColor: Colors.black87,
+                          ),
+                        );
+                        
+                        downloadFile(weatherProvider.videoUrl!, filename);
+                      },
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      child: const Icon(Icons.download),
                     ),
                   ),
 

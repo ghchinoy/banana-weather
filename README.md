@@ -11,6 +11,7 @@ It combines precise Geolocation with the creative power of **Google Gemini 3 Pro
 *   **AI-Generated Atmospheric Art:** Unique, non-deterministic visuals for every request.
 *   **Cinematic Video Loops:** Transitions from static image to a "Parallax" animation using **Veo 3.1 Fast**.
 *   **Smart Caching:** Reuses generated content for 3 hours to improve performance and reduce costs.
+*   **Video Download:** Download your generated animations as MP4 files with timestamped filenames.
 *   **Fictional Locations:** Supports generating scenes for fictional worlds (e.g., Arrakis, Middle-earth) via the Presets system.
 *   **Presets Gallery:** A curated list of pre-generated scenes categorized by theme, backed by **Firestore**.
 *   **Responsive Flutter Web UI:** Mobile-first design with a clean, "Digital Picture Frame" aesthetic.

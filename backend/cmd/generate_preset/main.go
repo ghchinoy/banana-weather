@@ -119,7 +119,18 @@ func main() {
 	} else {
 		// Single Mode
 		if *city == "" || *name == "" || *id == "" {
-			log.Fatal("Missing required flags: -city, -name, -id (or -csv)")
+			fmt.Println("Usage: go run cmd/generate_preset/main.go [flags]")
+			fmt.Println("\nRequired flags for Single Mode:")
+			fmt.Println("  -id       Unique identifier (e.g., 'my_preset')")
+			fmt.Println("  -name     Display name (e.g., 'My Preset')")
+			fmt.Println("  -city     City query or concept (e.g., 'Atlantis')")
+			fmt.Println("\nOptional flags:")
+			fmt.Println("  -category Grouping category (default: 'General')")
+			fmt.Println("  -context  Visual description for fictional places")
+			fmt.Println("  -force    Overwrite existing preset media")
+			fmt.Println("\nOr use batch mode:")
+			fmt.Println("  -csv      Path to CSV file")
+			os.Exit(1)
 		}
 		
 		existing, err := dbService.GetLocation(ctx, *id)

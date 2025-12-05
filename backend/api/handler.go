@@ -22,9 +22,10 @@ type Handler struct {
 }
 
 type WeatherResponse struct {
-	City        string `json:"city"`
-	ImageBase64 string `json:"image_base64,omitempty"`
-	ImageURL    string `json:"image_url,omitempty"`
+	City        string    `json:"city"`
+	ImageBase64 string    `json:"image_base64,omitempty"`
+	ImageURL    string    `json:"image_url,omitempty"`
+	LastUpdated time.Time `json:"last_updated"`
 }
 
 func sanitizeID(s string) string {
@@ -120,8 +121,9 @@ func (h *Handler) HandleGetWeather(w http.ResponseWriter, r *http.Request) {
 		sendEvent("status", "Loading cached forecast...")
 		
 		resp := WeatherResponse{
-			City:     formattedCity,
-			ImageURL: cachedLoc.ImageURL,
+			City:        formattedCity,
+			ImageURL:    cachedLoc.ImageURL,
+			LastUpdated: cachedLoc.LastUpdated,
 		}
 		jsonData, _ := json.Marshal(resp)
 		sendEvent("result", string(jsonData))
@@ -148,6 +150,7 @@ func (h *Handler) HandleGetWeather(w http.ResponseWriter, r *http.Request) {
 	resp := WeatherResponse{
 		City:        formattedCity,
 		ImageBase64: imgBase64,
+		LastUpdated: time.Now(),
 	}
 	jsonData, _ := json.Marshal(resp)
 	sendEvent("result", string(jsonData))

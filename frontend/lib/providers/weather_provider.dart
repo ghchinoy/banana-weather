@@ -15,6 +15,7 @@ class WeatherProvider with ChangeNotifier {
   String? _videoUrl;
   List<Preset> _presets = [];
   bool _isPresetLoaded = false;
+  DateTime? _lastUpdated;
 
   String? get city => _city;
   String? get imageBase64 => _imageBase64;
@@ -25,6 +26,7 @@ class WeatherProvider with ChangeNotifier {
   String? get videoUrl => _videoUrl;
   List<Preset> get presets => _presets;
   bool get isPresetLoaded => _isPresetLoaded;
+  DateTime? get lastUpdated => _lastUpdated;
 
   void clearError() {
     _error = null;
@@ -35,6 +37,7 @@ class WeatherProvider with ChangeNotifier {
     _city = p.name;
     _imageUrl = p.imageUrl;
     _videoUrl = p.videoUrl;
+    _lastUpdated = p.lastUpdated;
     _imageBase64 = null; // Clear generated image
     _error = null;
     _statusMessage = null;
@@ -173,6 +176,13 @@ class WeatherProvider with ChangeNotifier {
           _city = jsonData['city'];
           _imageBase64 = jsonData['image_base64']; // Null if missing
           _imageUrl = jsonData['image_url'];       // Null if missing
+          
+          if (jsonData['last_updated'] != null) {
+            _lastUpdated = DateTime.parse(jsonData['last_updated']);
+          } else {
+            _lastUpdated = DateTime.now();
+          }
+
           _isLoading = false;
           _statusMessage = null;
           notifyListeners();

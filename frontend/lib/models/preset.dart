@@ -4,6 +4,7 @@ class Preset {
   final String? category;
   final String imageUrl;
   final String videoUrl;
+  final DateTime? lastUpdated;
 
   Preset({
     required this.id,
@@ -11,6 +12,7 @@ class Preset {
     this.category,
     required this.imageUrl,
     required this.videoUrl,
+    this.lastUpdated,
   });
 
   factory Preset.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,9 @@ class Preset {
       category: json['category'],
       imageUrl: json['image_url'],
       videoUrl: json['video_url'],
+      lastUpdated: json['last_updated'] != null 
+          ? DateTime.parse(json['last_updated']) 
+          : null,
     );
   }
 }

@@ -59,3 +59,9 @@
 - Implement Admin CLI for Stats and Refresh (banana-weather-97h.5)
 - Cleanup obsolete presets.csv (banana-weather-5bc.2)
 
+## 2025-12-04
+- Pass LastUpdated Timestamp (banana-weather-4cq.3)
+- Epic: Video Download Feature (banana-weather-4cq)
+- Add Download Button to UI (banana-weather-4cq.2)
+- Implement Web Download Logic (banana-weather-4cq.1)
+

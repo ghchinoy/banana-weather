@@ -7,23 +7,40 @@ The `generate_preset` tool allows administrators to pre-generate content (Image 
 
 Run the tool from the `backend/` directory. Ensure your `.env` file is present in the project root.
 
+### 1. Single Mode (Add One Preset)
+Best for adding a new location quickly or testing a prompt.
+
 ```bash
-go run cmd/generate_preset/main.go [flags]
+# Real Location
+go run cmd/generate_preset/main.go -id "paris" -name "Paris, France" -city "Paris" -category "Europe"
+
+# Fictional Location (using -context)
+go run cmd/generate_preset/main.go \
+  -id "atlantis" \
+  -name "Atlantis" \
+  -city "Atlantis" \
+  -category "Fantasy" \
+  -context "A high-tech city submerged underwater, bioluminescent lights, ancient greek architecture mixed with sci-fi."
+```
+
+### 2. Batch Mode (CSV)
+Best for bulk updates.
+
+```bash
+go run cmd/generate_preset/main.go -csv presets_expanded.csv
 ```
 
 ### Flags
 
-| Flag | Description | Required? | Example |
+| Flag | Description | Required (Single Mode) | Example |
 | :--- | :--- | :--- | :--- |
 | `-csv` | Path to a CSV file for batch processing. | No | `presets_expanded.csv` |
 | `-force` | Overwrite existing presets with the same ID. If false, it only patches metadata. | No | `true` |
-| `-city` | (Single Mode) The query passed to the prompt. | Yes* | `"Carthage, Arrakis"` |
-| `-context` | (Single Mode) Additional context injected into the prompt. | No | `"Dune universe..."` |
-| `-name` | (Single Mode) The human-readable display name. | Yes* | `"Arrakis (Dune)"` |
-| `-category` | (Single Mode) The category for grouping in the drawer. | No | `"Dune Universe"` |
-| `-id` | (Single Mode) A unique identifier for the preset. | Yes* | `"arrakis"` |
-
-*\* Required if not using -csv.*
+| `-city` | The query passed to the prompt. | **Yes** | `"Carthage, Arrakis"` |
+| `-context` | Additional visual context for the AI. Use this for fictional places. | No | `"Dune universe..."` |
+| `-name` | The human-readable display name. | **Yes** | `"Arrakis (Dune)"` |
+| `-category` | The category for grouping in the drawer. Creates a new group if unique. | No | `"Dune Universe"` |
+| `-id` | A unique identifier for the preset. | **Yes** | `"arrakis"` |
 
 ### CSV Format
 The tool expects a CSV file with the following header:
