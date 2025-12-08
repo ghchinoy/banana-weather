@@ -65,3 +65,14 @@
 - Add Download Button to UI (banana-weather-4cq.2)
 - Implement Web Download Logic (banana-weather-4cq.1)
 
+## 2025-12-07
+- Document CLI (banana-weather-sk2)
+- Refactor backend CLI tools to use Cobra (Epic) (banana-weather-0tq)
+- Cleanup and Documentation (banana-weather-0tq.10)
+- Migrate Database Migrations (banana-weather-0tq.9)
+- Migrate Preset Generator (banana-weather-0tq.8)
+- Migrate Admin Commands (banana-weather-0tq.7)
+- Scaffold Cobra Application (banana-weather-0tq.6)
+- Refactor backend CLI tools to use Cobra (banana-weather-oi4)
+- Refactor GenerateImage for random prompt selection (banana-weather-7fx)
+

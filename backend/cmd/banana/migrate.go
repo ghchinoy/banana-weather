@@ -7,8 +7,20 @@ import (
 
 	"banana-weather/pkg/database"
 	"banana-weather/pkg/storage"
-	"github.com/joho/godotenv"
+
+	"github.com/spf13/cobra"
 )
+
+var migrateCmd = &cobra.Command{
+	Use:   "migrate",
+	Short: "Migrate legacy presets",
+	Long:  "Migrate legacy presets.json from GCS to Firestore.",
+	Run:   runMigrate,
+}
+
+func init() {
+	rootCmd.AddCommand(migrateCmd)
+}
 
 // LegacyPreset matches the JSON structure in presets.json
 type LegacyPreset struct {
@@ -19,10 +31,7 @@ type LegacyPreset struct {
 	VideoURL string `json:"video_url"`
 }
 
-func main() {
-	_ = godotenv.Load("../../.env")
-	_ = godotenv.Load(".env")
-
+func runMigrate(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
 
 	// Init Services

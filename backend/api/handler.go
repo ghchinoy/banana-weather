@@ -138,7 +138,7 @@ func (h *Handler) HandleGetWeather(w http.ResponseWriter, r *http.Request) {
 	sendEvent("status", fmt.Sprintf("Getting a banana image of the weather for %s...", formattedCity))
 	
 	// Use formattedCity to ensure the AI gets the full context
-	imgBase64, err := h.GenAI.GenerateImage(r.Context(), formattedCity, "")
+	imgBase64, err := h.GenAI.GenerateImage(r.Context(), formattedCity, "", 0)
 	if err != nil {
 		log.Printf("Error generating image for '%s': %v", formattedCity, err)
 		sendEvent("error", "Failed to generate image: "+err.Error())

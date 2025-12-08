@@ -1,7 +1,7 @@
 # Preset Generator Tool
 
 ## Overview
-The `generate_preset` tool allows administrators to pre-generate content (Image + Video) for specific locations—real or fictional—and add them to the application's global `presets.json` registry. This enables the "Gallery" feature in the frontend.
+The `banana generate` command allows administrators to pre-generate content (Image + Video) for specific locations—real or fictional—and add them to the application's global `presets.json` registry. This enables the "Gallery" feature in the frontend.
 
 ## Usage
 
@@ -12,35 +12,36 @@ Best for adding a new location quickly or testing a prompt.
 
 ```bash
 # Real Location
-go run cmd/generate_preset/main.go -id "paris" -name "Paris, France" -city "Paris" -category "Europe"
+go run cmd/banana/main.go generate --id "paris" --name "Paris, France" --city "Paris" --category "Europe"
 
-# Fictional Location (using -context)
-go run cmd/generate_preset/main.go \
-  -id "atlantis" \
-  -name "Atlantis" \
-  -city "Atlantis" \
-  -category "Fantasy" \
-  -context "A high-tech city submerged underwater, bioluminescent lights, ancient greek architecture mixed with sci-fi."
+# Fictional Location (using --context)
+go run cmd/banana/main.go generate \
+  --id "atlantis" \
+  --name "Atlantis" \
+  --city "Atlantis" \
+  --category "Fantasy" \
+  --context "A high-tech city submerged underwater, bioluminescent lights, ancient greek architecture mixed with sci-fi."
 ```
 
 ### 2. Batch Mode (CSV)
 Best for bulk updates.
 
 ```bash
-go run cmd/generate_preset/main.go -csv presets_expanded.csv
+go run cmd/banana/main.go generate --csv presets_expanded.csv
 ```
 
 ### Flags
 
 | Flag | Description | Required (Single Mode) | Example |
 | :--- | :--- | :--- | :--- |
-| `-csv` | Path to a CSV file for batch processing. | No | `presets_expanded.csv` |
-| `-force` | Overwrite existing presets with the same ID. If false, it only patches metadata. | No | `true` |
-| `-city` | The query passed to the prompt. | **Yes** | `"Carthage, Arrakis"` |
-| `-context` | Additional visual context for the AI. Use this for fictional places. | No | `"Dune universe..."` |
-| `-name` | The human-readable display name. | **Yes** | `"Arrakis (Dune)"` |
-| `-category` | The category for grouping in the drawer. Creates a new group if unique. | No | `"Dune Universe"` |
-| `-id` | A unique identifier for the preset. | **Yes** | `"arrakis"` |
+| `--csv` | Path to a CSV file for batch processing. | No | `presets_expanded.csv` |
+| `--force` | Overwrite existing presets with the same ID. If false, it only patches metadata. | No | `true` |
+| `--city` | The query passed to the prompt. | **Yes** | `"Carthage, Arrakis"` |
+| `--context` | Additional visual context for the AI. Use this for fictional places. | No | `"Dune universe..."` |
+| `--name` | The human-readable display name. | **Yes** | `"Arrakis (Dune)"` |
+| `--category` | The category for grouping in the drawer. Creates a new group if unique. | No | `"Dune Universe"` |
+| `--id` | A unique identifier for the preset. | **Yes** | `"arrakis"` |
+| `--style` | Prompt Style: 0=Random, 1=Classic, 2=Drink. | No | `2` |
 
 ### CSV Format
 The tool expects a CSV file with the following header:

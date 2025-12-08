@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -13,54 +12,78 @@ import (
 	"banana-weather/pkg/database"
 	"banana-weather/pkg/genai"
 	"banana-weather/pkg/storage"
-	"github.com/joho/godotenv"
+
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	// Load envs
-	_ = godotenv.Load("../../.env")
-	_ = godotenv.Load("../.env")
-	_ = godotenv.Load(".env")
+var adminCmd = &cobra.Command{
+	Use:   "admin",
+	Short: "Administrative tasks",
+	Long:  "Commands for managing the database, presets, and media.",
+}
 
-	// Subcommands
-	statsCmd := flag.NewFlagSet("stats", flag.ExitOnError)
-	
-	listCmd := flag.NewFlagSet("list", flag.ExitOnError)
-	listLimit := listCmd.Int("limit", 20, "Max number of results")
-	listType := listCmd.String("type", "all", "Filter by type: all, preset, user")
-
-	refreshCmd := flag.NewFlagSet("refresh", flag.ExitOnError)
-	refreshID := refreshCmd.String("id", "", "Location ID to refresh")
-
-	if len(os.Args) < 2 {
-		fmt.Println("expected 'stats', 'list', or 'refresh' subcommands")
-		os.Exit(1)
-	}
-
-	ctx := context.Background()
-	db, err := database.NewClient(ctx)
-	if err != nil {
-		log.Fatalf("Failed to init DB: %v", err)
-	}
-	defer db.Close()
-
-	switch os.Args[1] {
-	case "stats":
-		statsCmd.Parse(os.Args[2:])
-		runStats(ctx, db)
-	case "list":
-		listCmd.Parse(os.Args[2:])
-		runList(ctx, db, *listLimit, *listType)
-	case "refresh":
-		refreshCmd.Parse(os.Args[2:])
-		if *refreshID == "" {
-			log.Fatal("id is required (use -id)")
+var statsCmd = &cobra.Command{
+	Use:   "stats",
+	Short: "Show database statistics",
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := context.Background()
+		db, err := database.NewClient(ctx)
+		if err != nil {
+			log.Fatalf("Failed to init DB: %v", err)
 		}
-		runRefresh(ctx, db, *refreshID)
-	default:
-		fmt.Println("expected 'stats', 'list', or 'refresh' subcommands")
-		os.Exit(1)
-	}
+		defer db.Close()
+		runStats(ctx, db)
+	},
+}
+
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List locations",
+	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		filterType, _ := cmd.Flags().GetString("type")
+
+		ctx := context.Background()
+		db, err := database.NewClient(ctx)
+		if err != nil {
+			log.Fatalf("Failed to init DB: %v", err)
+		}
+		defer db.Close()
+		runList(ctx, db, limit, filterType)
+	},
+}
+
+var refreshCmd = &cobra.Command{
+	Use:   "refresh",
+	Short: "Refresh a location's media",
+	Run: func(cmd *cobra.Command, args []string) {
+		id, _ := cmd.Flags().GetString("id")
+		style, _ := cmd.Flags().GetInt("style")
+		if id == "" {
+			log.Fatal("id is required (use --id)")
+		}
+
+		ctx := context.Background()
+		db, err := database.NewClient(ctx)
+		if err != nil {
+			log.Fatalf("Failed to init DB: %v", err)
+		}
+		defer db.Close()
+		runRefresh(ctx, db, id, style)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(adminCmd)
+	adminCmd.AddCommand(statsCmd)
+	adminCmd.AddCommand(listCmd)
+	adminCmd.AddCommand(refreshCmd)
+
+	listCmd.Flags().Int("limit", 20, "Max number of results")
+	listCmd.Flags().String("type", "all", "Filter by type: all, preset, user")
+
+	refreshCmd.Flags().String("id", "", "Location ID to refresh")
+	refreshCmd.Flags().Int("style", 0, "Prompt Style: 0=Random, 1=Classic, 2=Drink")
 }
 
 func runStats(ctx context.Context, db *database.Client) {
@@ -102,8 +125,8 @@ func runList(ctx context.Context, db *database.Client, limit int, filterType str
 	w.Flush()
 }
 
-func runRefresh(ctx context.Context, db *database.Client, id string) {
-	log.Printf("Refreshing location: %s", id)
+func runRefresh(ctx context.Context, db *database.Client, id string, style int) {
+	log.Printf("Refreshing location: %s (Style: %d)", id, style)
 	loc, err := db.GetLocation(ctx, id)
 	if err != nil {
 		log.Fatalf("Location not found: %v", err)
@@ -115,7 +138,7 @@ func runRefresh(ctx context.Context, db *database.Client, id string) {
 	if err != nil { log.Fatalf("Storage init failed: %v", err) }
 
 	log.Printf("Generating image for '%s'...", loc.CityQuery)
-	imgBase64, err := genaiService.GenerateImage(ctx, loc.CityQuery, "")
+	imgBase64, err := genaiService.GenerateImage(ctx, loc.CityQuery, "", style)
 	if err != nil {
 		log.Fatalf("Image gen failed: %v", err)
 	}
@@ -133,7 +156,7 @@ func runRefresh(ctx context.Context, db *database.Client, id string) {
 		log.Fatalf("Video gen failed: %v", err)
 	}
 	
-	bucketName := os.Getenv("GENMEDIA_BUCKET")
+bucketName := os.Getenv("GENMEDIA_BUCKET")
 	publicVideoURL := strings.Replace(videoGsURI, "gs://"+bucketName, "https://storage.googleapis.com/"+bucketName, 1)
 	log.Printf("Video generated: %s", publicVideoURL)
 

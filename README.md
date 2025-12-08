@@ -71,13 +71,15 @@ PORT=8080
 *   **Run Local:** `./dev.sh`
 *   **Deploy:** `./deploy.sh`
 
-### 4. Tools
-**Preset Generator:**
-Populate the gallery with pre-generated content.
+### 4. Utility Tools
+We have a unified CLI (`banana`) for admin tasks, content generation, and maintenance.
+
+See the [CLI Documentation](backend/cmd/banana/README.md) for full usage details.
 
 ```bash
 cd backend
-go run cmd/generate_preset/main.go -csv presets_expanded.csv
+go build -o banana ./cmd/banana
+./banana --help
 ```
 
 **Migration:**

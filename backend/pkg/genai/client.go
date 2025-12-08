@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand/v2"
 	"os"
+	"strings"
 	"time"
 
 	"google.golang.org/genai"
@@ -52,9 +54,10 @@ func NewService(ctx context.Context) (*Service, error) {
 }
 
 // GenerateImage generates a 9:16 image for the given city.
-func (s *Service) GenerateImage(ctx context.Context, city string, extraContext string) (string, error) {
+// promptMode: 0=Random, 1=Classic, 2=Drink
+func (s *Service) GenerateImage(ctx context.Context, city string, extraContext string, promptMode int) (string, error) {
 	// a clever prompt inspired by @dotey https://x.com/dotey/status/1993729800922341810?s=20
-	basePrompt := `Present a clear, 45° top-down view of a vertical (9:16) isometric miniature 3D cartoon scene, highlighting iconic landmarks centered in the composition to showcase precise and delicate modeling.
+	const basePromptTemplate = `Present a clear, 45° top-down view of a vertical (9:16) isometric miniature 3D cartoon scene, highlighting iconic landmarks centered in the composition to showcase precise and delicate modeling.
 
 The scene features soft, refined textures with realistic PBR materials and gentle, lifelike lighting and shadow effects. Weather elements are creatively integrated into the urban architecture, establishing a dynamic interaction between the city's landscape and atmospheric conditions, creating an immersive weather ambiance.
 
@@ -65,11 +68,40 @@ Display a prominent weather icon at the top-center, with the date (x-small text)
 The text should match the input city's native language.
 Please retrieve current weather conditions for the specified city before rendering.`
 
+	const secondaryPromptTemplate = `Present a clear, 45° top-down view of a vertical (9:16) isometric miniature 3D cartoon scene, highlighting iconic landmarks centered in the composition to showcase precise and delicate modeling. 
+
+A close-up of a porcelain [DRINK] cup filled with [DRINK], subtly floating a detailed city of [CITY] occupying most of the composition. Prominently displayed at the scene's center are the city's most iconic landmarks, vividly detailed and illuminated softly. 
+
+Miniature streets feature realistic, tiny vehicles moving seamlessly. With cinematic-quality lighting and depth-of-field blurring, the image creates a magical, dreamlike atmosphere. Exceptionally detailed and highly photorealistic, the scene achieves an 8K cinematic finish. 
+
+Display a prominent weather icon at the top-center, with the date (x-small text) and temperature range (medium text) beneath it. The city name (large text) is positioned directly above the weather icon. The weather information has no background and can subtly overlap with the buildings. The text should match the input city's native language. Please retrieve current weather conditions for the specified city before rendering.`
+
+	var useSecondary bool
+	switch promptMode {
+	case 1: // Force Classic
+		useSecondary = false
+	case 2: // Force Drink
+		useSecondary = true
+	default: // Random (0 or other)
+		useSecondary = rand.IntN(2) == 1
+	}
+
 	var prompt string
-	if extraContext != "" {
-		prompt = fmt.Sprintf("%s\n\nContext/Setting: %s\n\nCity name: %s", basePrompt, extraContext, city)
+	if !useSecondary {
+		// Use Base Prompt
+		log.Printf("Selected Base Prompt for %s (Mode: %d)", city, promptMode)
+		prompt = fmt.Sprintf("%s\n\nCity name: %s", basePromptTemplate, city)
 	} else {
-		prompt = fmt.Sprintf("%s\n\nCity name: %s", basePrompt, city)
+		// Use Secondary Prompt
+		log.Printf("Selected Secondary (Drink) Prompt for %s (Mode: %d)", city, promptMode)
+		// Fill [CITY] placeholder
+		p := strings.Replace(secondaryPromptTemplate, "[CITY]", city, -1)
+		// Instruct model to resolve [DRINK]
+		prompt = fmt.Sprintf("%s\n\nDRINK: the most common AM drink for this location", p)
+	}
+
+	if extraContext != "" {
+		prompt += fmt.Sprintf("\n\nContext/Setting: %s", extraContext)
 	}
 
 	// Nano Banana Pro corresponds to 'gemini-3-pro-image-preview'
@@ -81,6 +113,9 @@ Please retrieve current weather conditions for the specified city before renderi
 		ResponseModalities: []string{"IMAGE"},
 		Tools: []*genai.Tool{
 			{GoogleSearch: &genai.GoogleSearch{}},
+		},
+		ImageConfig: &genai.ImageConfig{
+			AspectRatio: "9:16",
 		},
 	})
 	if err != nil {

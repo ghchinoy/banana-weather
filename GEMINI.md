@@ -106,7 +106,9 @@ We use the `bd` (Beads) tool for all issue tracking.
     *   **Style:** Clean, "Digital Picture Frame" aesthetic (no clutter).
 
 ### Tooling
-*   **Preset Generator:** Use `cmd/generate_preset` to batch-generate content for the gallery.
+*   **CLI Tools:** Use `cmd/banana` (Unified CLI) for admin tasks and content generation.
+    *   **Generate Presets:** `go run cmd/banana/main.go generate ...`
+    *   **Admin:** `go run cmd/banana/main.go admin ...`
     *   Supports CSV input (`-csv`) for bulk processing.
     *   Injects context (`-context`) for fictional locations.
 

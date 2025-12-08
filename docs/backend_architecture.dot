@@ -31,7 +31,7 @@ digraph BananaWeatherBackend {
             PkgDB [label="pkg/database"];
         }
         
-        Tools [label="cmd/generate_preset\n(CLI Tool)", shape=parallelogram, fillcolor="#d1c4e9"];
+        Tools [label="cmd/banana\n(CLI Tool)", shape=parallelogram, fillcolor="#d1c4e9"];
     }
 
     // Flow
