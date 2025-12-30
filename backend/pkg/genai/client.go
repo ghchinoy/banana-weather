@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand/v2"
-	"os"
 	"strings"
 	"time"
 
@@ -19,25 +18,7 @@ type Service struct {
 	bucketName string
 }
 
-func NewService(ctx context.Context) (*Service, error) {
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	if projectID == "" {
-		projectID = os.Getenv("PROJECT_ID")
-	}
-	if projectID == "" {
-		return nil, fmt.Errorf("PROJECT_ID or GOOGLE_CLOUD_PROJECT not set")
-	}
-
-	bucketName := os.Getenv("GENMEDIA_BUCKET")
-	if bucketName == "" {
-		return nil, fmt.Errorf("GENMEDIA_BUCKET not set")
-	}
-
-	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
-	if location == "" {
-		location = "us-central1"
-	}
-
+func NewService(ctx context.Context, projectID, location, bucketName string) (*Service, error) {
 	log.Printf("Initializing GenAI Service. Project: %s, Location: %s, Bucket: %s", projectID, location, bucketName)
 
 	// Initialize GenAI Client

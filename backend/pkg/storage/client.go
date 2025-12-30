@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 
 	"cloud.google.com/go/storage"
 )
@@ -17,27 +16,19 @@ type Service struct {
 	projectID  string
 }
 
-func NewService(ctx context.Context) (*Service, error) {
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	if projectID == "" {
-		projectID = os.Getenv("PROJECT_ID")
-	}
-	
-	bucketName := os.Getenv("GENMEDIA_BUCKET")
+func NewService(ctx context.Context, bucketName string) (*Service, error) {
 	if bucketName == "" {
-		return nil, fmt.Errorf("GENMEDIA_BUCKET env var not set")
+		return nil, fmt.Errorf("GENMEDIA_BUCKET is empty")
 	}
 
-	c, err := storage.NewClient(ctx)
+	client, err := storage.NewClient(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create storage client: %w", err)
 	}
 
-	log.Printf("Storage Service initialized for bucket: %s", bucketName)
 	return &Service{
-		client:     c,
+		client:     client,
 		bucketName: bucketName,
-		projectID:  projectID,
 	}, nil
 }
 

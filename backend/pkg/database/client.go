@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -16,18 +15,7 @@ type Client struct {
 	fs *firestore.Client
 }
 
-func NewClient(ctx context.Context) (*Client, error) {
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	if projectID == "" {
-		projectID = os.Getenv("PROJECT_ID")
-	}
-	
-	databaseID := os.Getenv("FIRESTORE_DATABASE")
-	if databaseID == "" {
-		// Default to standard DB if not set, but we prefer explicit
-		databaseID = "(default)"
-	}
-
+func NewClient(ctx context.Context, projectID, databaseID string) (*Client, error) {
 	log.Printf("Initializing Firestore. Project: %s, Database: %s", projectID, databaseID)
 
 	// Create client with specific database ID

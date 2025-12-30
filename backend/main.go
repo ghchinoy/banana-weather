@@ -9,51 +9,55 @@ import (
 	"strings"
 
 	"banana-weather/api"
+	"banana-weather/pkg/config"
 	"banana-weather/pkg/database"
 	"banana-weather/pkg/genai"
 	"banana-weather/pkg/maps"
 	"banana-weather/pkg/storage"
+	"banana-weather/pkg/weather"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	// Load Configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("FATAL: Failed to load configuration: %v", err)
 	}
 
 	// Initialize Services
-	mapsService, err := maps.NewService()
+	mapsService, err := maps.NewService(cfg.GoogleMapsKey)
 	if err != nil {
-		log.Fatalf("FATAL: Maps service failed to initialize. Check GOOGLE_MAPS_API_KEY. Error: %v", err)
+		log.Fatalf("FATAL: Maps service failed to initialize. Error: %v", err)
 	}
 
 	// GenAI Service
-	genaiService, err := genai.NewService(context.Background())
+	genaiService, err := genai.NewService(context.Background(), cfg.ProjectID, cfg.Location, cfg.BucketName)
 	if err != nil {
-		log.Fatalf("FATAL: GenAI service failed to initialize. Check PROJECT_ID/GOOGLE_CLOUD_PROJECT. Error: %v", err)
+		log.Fatalf("FATAL: GenAI service failed to initialize. Error: %v", err)
 	}
 
 	// Storage Service
-	storageService, err := storage.NewService(context.Background())
+	storageService, err := storage.NewService(context.Background(), cfg.BucketName)
 	if err != nil {
-		log.Printf("Warning: Storage service failed to initialize (Check GENMEDIA_BUCKET): %v", err)
+		log.Printf("Warning: Storage service failed to initialize: %v", err)
 	}
 
 	// Database Service
-	dbService, err := database.NewClient(context.Background())
+	dbService, err := database.NewClient(context.Background(), cfg.ProjectID, cfg.DatabaseID)
 	if err != nil {
-		log.Fatalf("FATAL: Database service failed to initialize. Check FIRESTORE_DATABASE. Error: %v", err)
+		log.Fatalf("FATAL: Database service failed to initialize. Error: %v", err)
 	}
 	defer dbService.Close()
 
+	// Weather Orchestrator
+	weatherService := weather.NewService(mapsService, genaiService, storageService, dbService)
+
 	handler := &api.Handler{
-		Maps:    mapsService,
-		GenAI:   genaiService,
-		Storage: storageService,
 		DB:      dbService,
+		Weather: weatherService,
 	}
 
 	r := chi.NewRouter()
@@ -80,8 +84,8 @@ func main() {
 	log.Printf("Serving static files from: %s", filesDir)
 	FileServer(r, "/", http.Dir(filesDir))
 
-	log.Printf("Server starting on port %s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
+	log.Printf("Server starting on port %s", cfg.Port)
+	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatal(err)
 	}
 }

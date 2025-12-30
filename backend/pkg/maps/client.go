@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	"googlemaps.github.io/maps"
 )
@@ -13,10 +12,9 @@ type Service struct {
 	client *maps.Client
 }
 
-func NewService() (*Service, error) {
-	apiKey := os.Getenv("GOOGLE_MAPS_API_KEY")
+func NewService(apiKey string) (*Service, error) {
 	if apiKey == "" {
-		return nil, fmt.Errorf("GOOGLE_MAPS_API_KEY not set")
+		return nil, fmt.Errorf("GOOGLE_MAPS_API_KEY is empty")
 	}
 
 	c, err := maps.NewClient(maps.WithAPIKey(apiKey))

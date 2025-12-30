@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"banana-weather/pkg/config"
 	"banana-weather/pkg/database"
 	"banana-weather/pkg/genai"
 	"banana-weather/pkg/storage"
@@ -41,6 +42,103 @@ func init() {
 func runGenerate(cmd *cobra.Command, args []string) {
 	csvPath, _ := cmd.Flags().GetString("csv")
 	force, _ := cmd.Flags().GetBool("force")
+	
+	ctx := context.Background()
+
+	// Load Config
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Init Services
+	genaiService, err := genai.NewService(ctx, cfg.ProjectID, cfg.Location, cfg.BucketName)
+	if err != nil {
+		log.Fatalf("Failed to init GenAI: %v", err)
+	}
+	storageService, err := storage.NewService(ctx, cfg.BucketName)
+	if err != nil {
+		log.Fatalf("Failed to init Storage: %v", err)
+	}
+	dbService, err := database.NewClient(ctx, cfg.ProjectID, cfg.DatabaseID)
+	if err != nil {
+		log.Fatalf("Failed to init DB: %v", err)
+	}
+	defer dbService.Close()
+
+	if csvPath != "" {
+		runBatchMode(ctx, csvPath, force, genaiService, storageService, dbService)
+	} else {
+		runSingleMode(ctx, cmd, force, genaiService, storageService, dbService)
+	}
+
+	log.Println("Done.")
+}
+
+func runBatchMode(ctx context.Context, csvPath string, force bool, gs *genai.Service, ss *storage.Service, db *database.Client) {
+	log.Printf("Running in Batch Mode from %s (Force: %v)", csvPath, force)
+	f, err := os.Open(csvPath)
+	if err != nil {
+		log.Fatalf("Failed to open CSV: %v", err)
+	}
+	defer f.Close()
+
+	reader := csv.NewReader(f)
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.Fatalf("Failed to read CSV: %v", err)
+	}
+
+	for i, row := range records {
+		if i == 0 { continue } // Skip Header
+		if len(row) < 4 { continue }
+
+		pID := row[0]
+		pName := row[1]
+		pCity := row[2]
+		pCat := row[3]
+		pCtx := ""
+		if len(row) > 4 { pCtx = row[4] }
+
+		// Check Existing
+		existing, err := db.GetLocation(ctx, pID)
+		exists := err == nil && existing != nil
+
+		if exists && !force {
+			log.Printf("Skipping generation for [%s], updating metadata only.", pID)
+			existing.Name = pName
+			existing.Category = pCat
+			existing.IsPreset = true
+			if err := db.UpsertLocation(ctx, *existing); err != nil {
+				log.Printf("Failed to patch %s: %v", pID, err)
+			}
+			continue
+		}
+
+		log.Printf("Processing [%d/%d]: %s (%s)", i, len(records)-1, pName, pID)
+		// Batch mode defaults to Random (0) unless we add a column later
+		imgURL, vidURL, err := processPreset(ctx, gs, ss, pID, pCity, pCtx, 0)
+		if err != nil {
+			log.Printf("Error processing %s: %v", pID, err)
+			continue
+		}
+
+		loc := database.Location{
+			ID:        pID,
+			Name:      pName,
+			Category:  pCat,
+			CityQuery: pCity,
+			ImageURL:  imgURL,
+			VideoURL:  vidURL,
+			IsPreset:  true,
+		}
+		if err := db.UpsertLocation(ctx, loc); err != nil {
+			log.Printf("Failed to save %s: %v", pID, err)
+		}
+	}
+}
+
+func runSingleMode(ctx context.Context, cmd *cobra.Command, force bool, gs *genai.Service, ss *storage.Service, db *database.Client) {
 	city, _ := cmd.Flags().GetString("city")
 	ctxPrompt, _ := cmd.Flags().GetString("context")
 	name, _ := cmd.Flags().GetString("name")
@@ -48,145 +146,51 @@ func runGenerate(cmd *cobra.Command, args []string) {
 	id, _ := cmd.Flags().GetString("id")
 	style, _ := cmd.Flags().GetInt("style")
 
-	ctx := context.Background()
-
-	// Init Services
-	genaiService, err := genai.NewService(ctx)
-	if err != nil {
-		log.Fatalf("Failed to init GenAI: %v", err)
+	if city == "" || name == "" || id == "" {
+		fmt.Println("Usage: banana generate [flags]")
+		fmt.Println("\nRequired flags for Single Mode:")
+		fmt.Println("  --id       Unique identifier (e.g., 'my_preset')")
+		fmt.Println("  --name     Display name (e.g., 'My Preset')")
+		fmt.Println("  --city     City query or concept (e.g., 'Atlantis')")
+		fmt.Println("\nOptional flags:")
+		fmt.Println("  --category Grouping category (default: 'General')")
+		fmt.Println("  --context  Visual description for fictional places")
+		fmt.Println("  --style    Prompt Style: 0=Random, 1=Classic, 2=Drink (default: 0)")
+		fmt.Println("  --force    Overwrite existing preset media")
+		fmt.Println("\nOr use batch mode:")
+		fmt.Println("  --csv      Path to CSV file")
+		os.Exit(1)
 	}
-	storageService, err := storage.NewService(ctx)
-	if err != nil {
-		log.Fatalf("Failed to init Storage: %v", err)
-	}
-	dbService, err := database.NewClient(ctx)
-	if err != nil {
-		log.Fatalf("Failed to init DB: %v", err)
-	}
-	defer dbService.Close()
 
-	if csvPath != "" {
-		// Batch Mode
-		log.Printf("Running in Batch Mode from %s (Force: %v)", csvPath, force)
-		f, err := os.Open(csvPath)
-		if err != nil {
-			log.Fatalf("Failed to open CSV: %v", err)
+	existing, err := db.GetLocation(ctx, id)
+	exists := err == nil && existing != nil
+
+	if exists && !force {
+		log.Printf("Skipping generation for [%s], updating metadata only.", id)
+		existing.Name = name
+		existing.Category = category
+		existing.IsPreset = true
+		if err := db.UpsertLocation(ctx, *existing); err != nil {
+			log.Fatalf("Failed to patch %s: %v", id, err)
 		}
-		defer f.Close()
-
-		reader := csv.NewReader(f)
-		records, err := reader.ReadAll()
-		if err != nil {
-			log.Fatalf("Failed to read CSV: %v", err)
-		}
-
-		for i, row := range records {
-			if i == 0 {
-				continue
-			} // Skip Header
-			if len(row) < 4 {
-				continue
-			}
-
-			pID := row[0]
-			pName := row[1]
-			pCity := row[2]
-			pCat := row[3]
-			pCtx := ""
-			if len(row) > 4 {
-				pCtx = row[4]
-			}
-
-			// Check Existing
-			existing, err := dbService.GetLocation(ctx, pID)
-			exists := err == nil && existing != nil
-
-			if exists && !force {
-				log.Printf("Skipping generation for [%s], updating metadata only.", pID)
-				// Patch metadata
-				existing.Name = pName
-				existing.Category = pCat
-				existing.IsPreset = true
-				// Preserve URLs
-				if err := dbService.UpsertLocation(ctx, *existing); err != nil {
-					log.Printf("Failed to patch %s: %v", pID, err)
-				}
-				continue
-			}
-
-			log.Printf("Processing [%d/%d]: %s (%s)", i, len(records)-1, pName, pID)
-			// Batch mode defaults to Random (0) unless we add a column later
-			imgURL, vidURL, err := processPreset(ctx, genaiService, storageService, pID, pCity, pCtx, 0)
-			if err != nil {
-				log.Printf("Error processing %s: %v", pID, err)
-				continue
-			}
-
-			// Save to DB
-			loc := database.Location{
-				ID:        pID,
-				Name:      pName,
-				Category:  pCat,
-				CityQuery: pCity,
-				ImageURL:  imgURL,
-				VideoURL:  vidURL,
-				IsPreset:  true,
-			}
-			if err := dbService.UpsertLocation(ctx, loc); err != nil {
-				log.Printf("Failed to save %s: %v", pID, err)
-			}
-		}
-
 	} else {
-		// Single Mode
-		if city == "" || name == "" || id == "" {
-			fmt.Println("Usage: banana generate [flags]")
-			fmt.Println("\nRequired flags for Single Mode:")
-			fmt.Println("  --id       Unique identifier (e.g., 'my_preset')")
-			fmt.Println("  --name     Display name (e.g., 'My Preset')")
-			fmt.Println("  --city     City query or concept (e.g., 'Atlantis')")
-			fmt.Println("\nOptional flags:")
-			fmt.Println("  --category Grouping category (default: 'General')")
-			fmt.Println("  --context  Visual description for fictional places")
-			fmt.Println("  --style    Prompt Style: 0=Random, 1=Classic, 2=Drink (default: 0)")
-			fmt.Println("  --force    Overwrite existing preset media")
-			fmt.Println("\nOr use batch mode:")
-			fmt.Println("  --csv      Path to CSV file")
-			os.Exit(1)
+		imgURL, vidURL, err := processPreset(ctx, gs, ss, id, city, ctxPrompt, style)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
 		}
-
-		existing, err := dbService.GetLocation(ctx, id)
-		exists := err == nil && existing != nil
-
-		if exists && !force {
-			log.Printf("Skipping generation for [%s], updating metadata only.", id)
-			existing.Name = name
-			existing.Category = category
-			existing.IsPreset = true
-			if err := dbService.UpsertLocation(ctx, *existing); err != nil {
-				log.Fatalf("Failed to patch %s: %v", id, err)
-			}
-		} else {
-			imgURL, vidURL, err := processPreset(ctx, genaiService, storageService, id, city, ctxPrompt, style)
-			if err != nil {
-				log.Fatalf("Error: %v", err)
-			}
-			loc := database.Location{
-				ID:        id,
-				Name:      name,
-				Category:  category,
-				CityQuery: city,
-				ImageURL:  imgURL,
-				VideoURL:  vidURL,
-				IsPreset:  true,
-			}
-			if err := dbService.UpsertLocation(ctx, loc); err != nil {
-				log.Fatalf("Failed to save: %v", err)
-			}
+		loc := database.Location{
+			ID:        id,
+			Name:      name,
+			Category:  category,
+			CityQuery: city,
+			ImageURL:  imgURL,
+			VideoURL:  vidURL,
+			IsPreset:  true,
+		}
+		if err := db.UpsertLocation(ctx, loc); err != nil {
+			log.Fatalf("Failed to save: %v", err)
 		}
 	}
-
-	log.Println("Done.")
 }
 
 func processPreset(ctx context.Context, gs *genai.Service, ss *storage.Service, id, city, promptCtx string, style int) (string, string, error) {

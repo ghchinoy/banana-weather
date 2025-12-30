@@ -25,6 +25,8 @@ digraph BananaWeatherBackend {
         subgraph cluster_packages {
             label = "Packages";
             bgcolor = "#b3e5fc";
+            PkgConfig [label="pkg/config"];
+            PkgWeather [label="pkg/weather"];
             PkgGenAI [label="pkg/genai"];
             PkgMaps [label="pkg/maps"];
             PkgStorage [label="pkg/storage"];
@@ -42,14 +44,18 @@ digraph BananaWeatherBackend {
     Admin -> Tools [label="CLI"];
     
     CloudRun -> Main;
+    Main -> PkgConfig [label="Load Env"];
     Main -> Router;
     Router -> Handler [label="/api/weather\n/api/presets"];
 
-    // Handler Dependencies
-    Handler -> PkgMaps [label="Resolve Location"];
-    Handler -> PkgDB [label="Check Cache (TTL)\nFetch Presets"];
-    Handler -> PkgGenAI [label="Generate Content\n(If Cache Miss)"];
-    Handler -> PkgStorage [label="Persist Assets"];
+    // Handler & Service Dependencies
+    Handler -> PkgWeather [label="GetWeatherFlow"];
+    Handler -> PkgDB [label="GetPresets"];
+    
+    PkgWeather -> PkgMaps [label="Resolve Location"];
+    PkgWeather -> PkgDB [label="Check Cache (TTL)"];
+    PkgWeather -> PkgGenAI [label="Generate Content"];
+    PkgWeather -> PkgStorage [label="Persist Assets"];
 
     // External Calls
     PkgMaps -> MapsAPI [label="Geocoding"];
@@ -61,11 +67,12 @@ digraph BananaWeatherBackend {
     
     // Data Flow
     VertexAI -> PkgGenAI [label="Content"];
-    PkgGenAI -> Handler [label="Results"];
-    Handler -> PkgDB [label="Upsert Cache"];
+    PkgGenAI -> PkgWeather [label="Results"];
+    PkgWeather -> Handler [label="Stream Events"];
     Handler -> User [label="SSE Stream\n(Status, URL)"];
     
     // Tooling Flow
+    Tools -> PkgConfig;
     Tools -> PkgGenAI;
     Tools -> PkgStorage;
     Tools -> PkgDB;

@@ -21,7 +21,7 @@ class ThemeProvider with ChangeNotifier {
         brightness: Brightness.light,
       ),
       scaffoldBackgroundColor: Colors.grey[100],
-      textTheme: GoogleFonts.latoTextTheme(ThemeData.light().textTheme),
+      textTheme: GoogleFonts.notoSansTextTheme(ThemeData.light().textTheme),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -38,7 +38,7 @@ class ThemeProvider with ChangeNotifier {
         brightness: Brightness.dark,
       ),
       scaffoldBackgroundColor: Colors.black,
-      textTheme: GoogleFonts.latoTextTheme(ThemeData.dark().textTheme),
+      textTheme: GoogleFonts.notoSansTextTheme(ThemeData.dark().textTheme),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,

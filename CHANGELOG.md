@@ -76,3 +76,17 @@
 - Refactor backend CLI tools to use Cobra (banana-weather-oi4)
 - Refactor GenerateImage for random prompt selection (banana-weather-7fx)
 
+## 2025-12-30
+- Refactor Backend Architecture (banana-weather-6nn)
+- Add Backend Unit Tests (banana-weather-6nn.5)
+- Refactor Generate Command (banana-weather-6nn.3)
+- Centralize Configuration (banana-weather-6nn.2)
+- Extract Weather Service (banana-weather-6nn.1)
+- Fix missing Noto fonts characters in Flutter Web (banana-weather-5fm)
+- Implement LRO Polling for Veo (banana-weather-2ql)
+- Epic: Admin TUI Console (banana-weather-97h)
+- Edit/Create Forms (banana-weather-97h.4)
+- Interactive Generation Flow (banana-weather-97h.3)
+- Location List & Filtering (banana-weather-97h.2)
+- TUI Foundation & Navigation (banana-weather-97h.1)
+

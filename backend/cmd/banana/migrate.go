@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 
+	"banana-weather/pkg/config"
 	"banana-weather/pkg/database"
 	"banana-weather/pkg/storage"
 
@@ -34,13 +35,16 @@ type LegacyPreset struct {
 func runMigrate(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
 
+	cfg, _ := config.Load()
+	if cfg == nil { log.Fatal("Config load failed") }
+
 	// Init Services
-	storageService, err := storage.NewService(ctx)
+	storageService, err := storage.NewService(ctx, cfg.BucketName)
 	if err != nil {
 		log.Fatalf("Failed to init Storage: %v", err)
 	}
 	
-	dbService, err := database.NewClient(ctx)
+	dbService, err := database.NewClient(ctx, cfg.ProjectID, cfg.DatabaseID)
 	if err != nil {
 		log.Fatalf("Failed to init DB: %v", err)
 	}

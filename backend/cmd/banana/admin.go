@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"banana-weather/pkg/config"
 	"banana-weather/pkg/database"
 	"banana-weather/pkg/genai"
 	"banana-weather/pkg/storage"
@@ -27,7 +28,10 @@ var statsCmd = &cobra.Command{
 	Short: "Show database statistics",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
-		db, err := database.NewClient(ctx)
+		cfg, _ := config.Load()
+		if cfg == nil { log.Fatal("Config load failed") }
+
+		db, err := database.NewClient(ctx, cfg.ProjectID, cfg.DatabaseID)
 		if err != nil {
 			log.Fatalf("Failed to init DB: %v", err)
 		}
@@ -44,7 +48,10 @@ var listCmd = &cobra.Command{
 		filterType, _ := cmd.Flags().GetString("type")
 
 		ctx := context.Background()
-		db, err := database.NewClient(ctx)
+		cfg, _ := config.Load()
+		if cfg == nil { log.Fatal("Config load failed") }
+
+		db, err := database.NewClient(ctx, cfg.ProjectID, cfg.DatabaseID)
 		if err != nil {
 			log.Fatalf("Failed to init DB: %v", err)
 		}
@@ -64,12 +71,15 @@ var refreshCmd = &cobra.Command{
 		}
 
 		ctx := context.Background()
-		db, err := database.NewClient(ctx)
+		cfg, _ := config.Load()
+		if cfg == nil { log.Fatal("Config load failed") }
+
+		db, err := database.NewClient(ctx, cfg.ProjectID, cfg.DatabaseID)
 		if err != nil {
 			log.Fatalf("Failed to init DB: %v", err)
 		}
 		defer db.Close()
-		runRefresh(ctx, db, id, style)
+		runRefresh(ctx, db, id, style, cfg)
 	},
 }
 
@@ -125,16 +135,16 @@ func runList(ctx context.Context, db *database.Client, limit int, filterType str
 	w.Flush()
 }
 
-func runRefresh(ctx context.Context, db *database.Client, id string, style int) {
+func runRefresh(ctx context.Context, db *database.Client, id string, style int, cfg *config.Config) {
 	log.Printf("Refreshing location: %s (Style: %d)", id, style)
 	loc, err := db.GetLocation(ctx, id)
 	if err != nil {
 		log.Fatalf("Location not found: %v", err)
 	}
 
-	genaiService, err := genai.NewService(ctx)
+	genaiService, err := genai.NewService(ctx, cfg.ProjectID, cfg.Location, cfg.BucketName)
 	if err != nil { log.Fatalf("GenAI init failed: %v", err) }
-	storageService, err := storage.NewService(ctx)
+	storageService, err := storage.NewService(ctx, cfg.BucketName)
 	if err != nil { log.Fatalf("Storage init failed: %v", err) }
 
 	log.Printf("Generating image for '%s'...", loc.CityQuery)
