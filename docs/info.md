@@ -18,7 +18,7 @@ City name:
 
 ```
 
-## Veo 3.1 Fast prompt
+## Veo 3.1 Lite prompt
 
 ```
  The camera moves in parallax as the elements in the image move naturally, while the forecast data—the bold title remain fixed.

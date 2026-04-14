@@ -41,6 +41,7 @@ Create a `.env` file:
 GOOGLE_CLOUD_PROJECT="<your-gcp-project>"
 GOOGLE_CLOUD_LOCATION="global" # Required for Gemini 3 Pro Image
 GOOGLE_MAPS_API_KEY="<your-maps-key>"
+GEMINI_IMAGE="gemini-3.1-flash-image-preview" # Optional: Override the default image generation model
 PORT=8080
 ```
 

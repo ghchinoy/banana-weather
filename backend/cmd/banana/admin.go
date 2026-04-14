@@ -142,7 +142,7 @@ func runRefresh(ctx context.Context, db *database.Client, id string, style int, 
 		log.Fatalf("Location not found: %v", err)
 	}
 
-	genaiService, err := genai.NewService(ctx, cfg.ProjectID, cfg.Location, cfg.BucketName)
+	genaiService, err := genai.NewService(ctx, cfg.ProjectID, cfg.Location, cfg.BucketName, cfg.GeminiImageModel)
 	if err != nil { log.Fatalf("GenAI init failed: %v", err) }
 	storageService, err := storage.NewService(ctx, cfg.BucketName)
 	if err != nil { log.Fatalf("Storage init failed: %v", err) }

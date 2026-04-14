@@ -52,7 +52,7 @@ func runGenerate(cmd *cobra.Command, args []string) {
 	}
 
 	// Init Services
-	genaiService, err := genai.NewService(ctx, cfg.ProjectID, cfg.Location, cfg.BucketName)
+	genaiService, err := genai.NewService(ctx, cfg.ProjectID, cfg.Location, cfg.BucketName, cfg.GeminiImageModel)
 	if err != nil {
 		log.Fatalf("Failed to init GenAI: %v", err)
 	}

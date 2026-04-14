@@ -61,7 +61,7 @@ winterfell,"Winterfell",Winterfell,Game of Thrones,"Snowy castle, Stark"
     *   If ID exists and `-force` is false: Updates Metadata (Name, Category) but **skips generation**.
 3.  **Generate Image:** Calls Gemini 3 Pro Image with the city and context.
 4.  **Upload:** Saves the PNG to GCS.
-5.  **Generate Video:** Calls Veo 3.1 Fast with the GCS Image URI.
+5.  **Generate Video:** Calls Veo 3.1 Lite with the GCS Image URI.
 6.  **Output:** Veo writes the video directly to GCS.
 7.  **Registry Update:**
     *   Upserts the Location document in **Firestore**.

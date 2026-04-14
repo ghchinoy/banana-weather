@@ -8,12 +8,13 @@ import (
 )
 
 type Config struct {
-	ProjectID     string
-	Location      string
-	BucketName    string
-	DatabaseID    string
-	GoogleMapsKey string
-	Port          string
+	ProjectID        string
+	Location         string
+	BucketName       string
+	DatabaseID       string
+	GoogleMapsKey    string
+	Port             string
+	GeminiImageModel string
 }
 
 // Load reads .env files and environment variables, validating required fields.
@@ -24,12 +25,13 @@ func Load() (*Config, error) {
 	_ = godotenv.Load("../../.env")
 
 	cfg := &Config{
-		ProjectID:     getEnvOr("GOOGLE_CLOUD_PROJECT", os.Getenv("PROJECT_ID")),
-		Location:      getEnvOr("GOOGLE_CLOUD_LOCATION", "us-central1"),
-		BucketName:    os.Getenv("GENMEDIA_BUCKET"),
-		DatabaseID:    getEnvOr("FIRESTORE_DATABASE", "(default)"),
-		GoogleMapsKey: os.Getenv("GOOGLE_MAPS_API_KEY"),
-		Port:          getEnvOr("PORT", "8080"),
+		ProjectID:        getEnvOr("GOOGLE_CLOUD_PROJECT", os.Getenv("PROJECT_ID")),
+		Location:         getEnvOr("GOOGLE_CLOUD_LOCATION", "us-central1"),
+		BucketName:       os.Getenv("GENMEDIA_BUCKET"),
+		DatabaseID:       getEnvOr("FIRESTORE_DATABASE", "(default)"),
+		GoogleMapsKey:    os.Getenv("GOOGLE_MAPS_API_KEY"),
+		Port:             getEnvOr("PORT", "8080"),
+		GeminiImageModel: getEnvOr("GEMINI_IMAGE", "gemini-3.1-flash-image-preview"),
 	}
 
 	if cfg.ProjectID == "" {

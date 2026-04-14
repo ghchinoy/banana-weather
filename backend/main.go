@@ -34,7 +34,7 @@ func main() {
 	}
 
 	// GenAI Service
-	genaiService, err := genai.NewService(context.Background(), cfg.ProjectID, cfg.Location, cfg.BucketName)
+	genaiService, err := genai.NewService(context.Background(), cfg.ProjectID, cfg.Location, cfg.BucketName, cfg.GeminiImageModel)
 	if err != nil {
 		log.Fatalf("FATAL: GenAI service failed to initialize. Error: %v", err)
 	}

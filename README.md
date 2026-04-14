@@ -4,12 +4,12 @@
 
 **Banana Weather** is a GenMedia web application that visualizes the current "vibe" and atmospheric essence of a location using Generative AI. 
 
-It combines precise Geolocation with the creative power of **Google Gemini 3 Pro Image** (Nano Banana Pro) and **Google Veo 3.1** to generate high-fidelity, vertical (9:16) 3D isometric art and looping videos representing the weather, architecture, and mood of your city in real-time.
+It combines precise Geolocation with the creative power of **Google Gemini 3.1 Flash Image** (Nano Banana 2) and **Google Veo 3.1** to generate high-fidelity, vertical (9:16) 3D isometric art and looping videos representing the weather, architecture, and mood of your city in real-time.
 
 ## Features
 
 *   **AI-Generated Atmospheric Art:** Unique, non-deterministic visuals for every request.
-*   **Cinematic Video Loops:** Transitions from static image to a "Parallax" animation using **Veo 3.1 Fast**.
+*   **Cinematic Video Loops:** Transitions from static image to a "Parallax" animation using **Veo 3.1 Lite**.
 *   **Smart Caching:** Reuses generated content for 3 hours to improve performance and reduce costs.
 *   **Video Download:** Download your generated animations as MP4 files with timestamped filenames.
 *   **Fictional Locations:** Supports generating scenes for fictional worlds (e.g., Arrakis, Middle-earth) via the Presets system.
@@ -29,7 +29,7 @@ The system follows a Client-Server architecture:
 1.  **The Backend (Go 1.25):** 
     *   **Orchestrator:** Handles API requests, validating inputs.
     *   **Geocoding:** Interacts with Google Maps Platform.
-    *   **Generative AI:** Gemini 3 Pro Image & Veo 3.1.
+    *   **Generative AI:** Gemini 3.1 Flash Image & Veo 3.1.
     *   **Persistence:** Uses **Firestore** for metadata/caching and **Cloud Storage** for assets.
     *   **Server:** Serves the compiled Flutter Web application.
 
@@ -62,6 +62,7 @@ Create a `.env` file:
 GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
 GOOGLE_CLOUD_LOCATION="global" 
 GOOGLE_MAPS_API_KEY="your-maps-api-key"
+GEMINI_IMAGE="gemini-3.1-flash-image-preview" # Optional: Override the default image generation model
 GENMEDIA_BUCKET="your-gcs-bucket-name"
 FIRESTORE_DATABASE="banana-weather"
 PORT=8080
