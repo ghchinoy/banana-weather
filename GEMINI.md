@@ -3,7 +3,7 @@
 *A GenMedia application that visualizes the current "vibe" of a city using Generative AI.*
 
 ## Project Overview
-Banana Weather is a simple yet powerful application that demonstrates the "Oracle & Temple" architecture. It allows users to select a city and generates a high-fidelity, 9:16 artistic representation of that location's current essence using **Google Gemini 3 Pro Image (Nano Banana Pro)** via Vertex AI.
+Banana Weather is a simple yet powerful application that demonstrates the "Oracle & Temple" architecture. It allows users to select a city and generates a high-fidelity, 9:16 artistic representation of that location's current essence using Google's Gemini image models via Vertex AI. The default is **Gemini 3.1 Flash Image (Nano Banana 2)** (`gemini-3.1-flash-image`, GA); you can switch to **Gemini 3 Pro Image (Nano Banana Pro)** (`gemini-3-pro-image`) via the `GEMINI_IMAGE` env var for higher fidelity.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ The system follows a client-server model:
     *   **Role:** API Server, Static File Host, and GenAI Orchestrator.
     *   **Responsibilities:**
         *   **Geocoding:** Google Maps API for location resolution and reverse geocoding.
-        *   **Image Generation:** Vertex AI (`gemini-3-pro-image-preview`) using `GenerateContent`.
+        *   **Image Generation:** Vertex AI (`gemini-3.1-flash-image` by default, or `gemini-3-pro-image`) using `GenerateContent`.
         *   **Serving:** Hosts the compiled Flutter Web application.
 
 2.  **The Frontend (Flutter):** The user interface.
@@ -39,11 +39,30 @@ Create a `.env` file:
 
 ```bash
 GOOGLE_CLOUD_PROJECT="<your-gcp-project>"
-GOOGLE_CLOUD_LOCATION="global" # Required for Gemini 3 Pro Image
+IMAGE_LOCATION="global"      # Vertex location for Gemini 3 image models. MUST be global (also us/eu). Falls back to GOOGLE_CLOUD_LOCATION, then "global".
+VEO_LOCATION="us-central1"   # Vertex region for Veo. MUST be a region (Veo does NOT run at global).
 GOOGLE_MAPS_API_KEY="<your-maps-key>"
-GEMINI_IMAGE="gemini-3.1-flash-image-preview" # Optional: Override the default image generation model
+GEMINI_IMAGE="gemini-3.1-flash-image"        # Optional: Override the image model (e.g. gemini-3-pro-image for higher fidelity, or gemini-3.1-flash-lite-image for lower cost/latency)
+VEO_MODEL="veo-3.1-lite-generate-001"        # Optional: Override the video model (e.g. veo-3.1-generate-001, veo-3.1-fast-generate-001)
 PORT=8080
 ```
+
+> **Locations differ per service.** Gemini 3 image models are served at `global`
+> (also `us`/`eu`) — never a regular region. Veo requires a **regional** endpoint
+> (default `us-central1`) and does **not** run at `global`. A single shared location
+> cannot serve both, so the backend builds one Vertex client per location:
+> `IMAGE_LOCATION` for images and `VEO_LOCATION` for video. The Cloud Run deploy
+> region (`--region`, default `us-central1`) is independent of both.
+>
+> **Migration warning:** any deploy that previously set `GOOGLE_CLOUD_LOCATION` to a
+> non-default region specifically to drive Veo must migrate to `VEO_LOCATION`, since
+> `GOOGLE_CLOUD_LOCATION` now routes to the image location only and no longer affects video.
+>
+> **Video default is Preview.** `veo-3.1-lite-generate-001` is a Preview-stage model
+> (Pre-GA Offerings Terms, no retirement SLA). It is retained intentionally for cost.
+> For a GA posture, set `VEO_MODEL=veo-3.1-generate-001` (quality) or
+> `veo-3.1-fast-generate-001` (latency/cost). Image models
+> (`gemini-3.1-flash-image`, `gemini-3-pro-image`, `gemini-3.1-flash-lite-image`) are GA.
 
 ### 2. Running Local (Dev)
 Use the helper script to build frontend and run backend:
@@ -87,9 +106,10 @@ We use the `bd` (Beads) tool for all issue tracking.
 ### Go (Backend)
 *   **Structure:** `pkg/` for business logic (GenAI, Maps, Storage), `api/` for HTTP handlers.
 *   **GenAI:**
-    *   **Images:** Use `GenerateContent` (Multimodal API) for Gemini 3 Pro Image.
-    *   **Videos:** Use `GenerateVideos` (Imagen API) for Veo 3.1.
-    *   **LRO Polling:** Use `s.client.Operations.GetVideosOperation` (Native SDK) or `aiplatform` SDK if needed for robust polling.
+    *   **Images:** Use `GenerateContent` (Multimodal API) for the Gemini 3 image models, via the image client (location `global`).
+    *   **Videos:** Use `GenerateVideos` (Veo API) for Veo 3.1, via the video client (regional location, e.g. `us-central1`).
+    *   **Per-location clients:** The genai Vertex client binds its location at construction, so `pkg/genai` constructs two clients (image `global`, video regional). Poll a Veo LRO with the same client that created it (`videoClient.Operations.GetVideosOperation`).
+    *   **LRO Polling:** Native SDK polling (`Operations.GetVideosOperation`) is used and works. Historically a fallback to `google.golang.org/api/aiplatform/v1beta1` with the regional endpoint was suggested if the high-level SDK failed; that is no longer needed.
     *   **Storage:** Use `OutputGCSURI` to write large assets directly to GCS. Use `pkg/storage` for manual uploads.
 *   **Logging:** Use `log` for tracking request flows and errors.
 *   **Static Serving:** Logic must support both local paths (`../frontend/build/web`) and Docker paths (`frontend/build/web`) for the frontend assets.
@@ -122,7 +142,7 @@ We use the `bd` (Beads) tool for all issue tracking.
 
 ### Troubleshooting
 *   **500 Errors:** Check backend logs via Cloud Logging.
-*   **"Model not found"::** Ensure `GOOGLE_CLOUD_LOCATION` is set to `global` for `gemini-3-pro-image-preview`.
+*   **"Model not found"::** Check the location matches the model class. Image models (`gemini-3.1-flash-image` / `gemini-3-pro-image`) require `IMAGE_LOCATION=global`; Veo requires a region such as `VEO_LOCATION=us-central1` and will NOT resolve at `global`. Note the `-preview` suffixes were retired when the image models went GA (2026-05-28).
 *   **"Connection Refused":** Verify the Frontend is using relative URLs in production.
 *   **"UnimplementedError: init()":** Run `flutter clean` and rebuild to fix Web Plugin registration issues.
 *   **Video Not Playing:** Check CORS on the GCS bucket and ensure `setVolume(0.0)` is called.
@@ -130,7 +150,8 @@ We use the `bd` (Beads) tool for all issue tracking.
 ## Technical Guidelines & Lessons Learned
 
 ### Google Cloud & GenAI
-*   **LRO Polling:** For Publisher Models (Veo, Imagen), standard GenAI SDKs may miss polling logic for custom operation types. Use `google.golang.org/api/aiplatform/v1beta1` with the **Regional Endpoint** (`us-central1-aiplatform...`) for reliable operation tracking if the high-level SDK fails.
+*   **LRO Polling:** The native GenAI SDK (`Operations.GetVideosOperation`) reliably tracks Veo operations and is what the code uses. If it ever regresses, `google.golang.org/api/aiplatform/v1beta1` against the **Regional Endpoint** (`us-central1-aiplatform...`) is a known fallback. Always poll with the client bound to the same region that created the operation.
+*   **Per-service locations:** Gemini 3 image models are served at `global`; Veo runs regionally (`us-central1`). One Vertex client cannot serve both — construct one per location.
 *   **Identities:** Always use a Service Account with Least Privilege. Document required roles (e.g. `datastore.user`, `aiplatform.user`) immediately in `setup_sa.sh`.
 
 ### Frontend/Backend Contract

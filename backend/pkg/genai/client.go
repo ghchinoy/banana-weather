@@ -14,25 +14,48 @@ import (
 )
 
 type Service struct {
-	client     *genai.Client
-	bucketName string
-	imageModel string
+	// imageClient is bound to the image location ("global" for Gemini 3 image models).
+	imageClient *genai.Client
+	// videoClient is bound to the video region (e.g. "us-central1" for Veo).
+	// It is also used to poll the Veo LRO it created.
+	videoClient *genai.Client
+	bucketName  string
+	imageModel  string
+	videoModel  string
 }
 
-func NewService(ctx context.Context, projectID, location, bucketName, imageModel string) (*Service, error) {
-	log.Printf("Initializing GenAI Service. Project: %s, Location: %s, Bucket: %s", projectID, location, bucketName)
+// NewService builds the GenAI service. The genai Vertex client binds its location
+// at construction, but Gemini 3 image models are served at "global" while Veo
+// requires a regional endpoint. A single client cannot serve both, so we construct
+// two clients: one per location.
+func NewService(ctx context.Context, projectID, imageLocation, videoLocation, bucketName, imageModel, videoModel string) (*Service, error) {
+	log.Printf("Initializing GenAI Service. Project: %s, ImageLocation: %s, VideoLocation: %s, Bucket: %s", projectID, imageLocation, videoLocation, bucketName)
 
-	// Initialize GenAI Client
-	c, err := genai.NewClient(ctx, &genai.ClientConfig{
+	imageClient, err := genai.NewClient(ctx, &genai.ClientConfig{
 		Backend:  genai.BackendVertexAI,
 		Project:  projectID,
-		Location: location,
+		Location: imageLocation,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to init image genai client (location %q): %w", imageLocation, err)
 	}
 
-	return &Service{client: c, bucketName: bucketName, imageModel: imageModel}, nil
+	videoClient, err := genai.NewClient(ctx, &genai.ClientConfig{
+		Backend:  genai.BackendVertexAI,
+		Project:  projectID,
+		Location: videoLocation,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init video genai client (location %q): %w", videoLocation, err)
+	}
+
+	return &Service{
+		imageClient: imageClient,
+		videoClient: videoClient,
+		bucketName:  bucketName,
+		imageModel:  imageModel,
+		videoModel:  videoModel,
+	}, nil
 }
 
 // GenerateImage generates a 9:16 image for the given city.
@@ -88,12 +111,12 @@ Display a prominent weather icon at the top-center, with the date (x-small text)
 
 	model := s.imageModel
 	if model == "" {
-		model = "gemini-3.1-flash-image-preview"
+		model = "gemini-3.1-flash-image"
 	}
 
 	log.Printf("Generating image for city: %s using model: %s (GenerateContent)", city, model)
 
-	resp, err := s.client.Models.GenerateContent(ctx, model, genai.Text(prompt), &genai.GenerateContentConfig{
+	resp, err := s.imageClient.Models.GenerateContent(ctx, model, genai.Text(prompt), &genai.GenerateContentConfig{
 		ResponseModalities: []string{"IMAGE"},
 		Tools: []*genai.Tool{
 			{GoogleSearch: &genai.GoogleSearch{}},
@@ -126,11 +149,14 @@ Display a prominent weather icon at the top-center, with the date (x-small text)
 
 const DefaultVideoPrompt = "The camera moves in parallax as the elements in the image move naturally, while the forecast data—the bold title—remains fixed."
 
-// GenerateVideo generates a 9:16 video using Veo 3.1 Fast.
+// GenerateVideo generates a 9:16 video using Veo 3.1 (Lite by default).
 // Returns: GS URI (string) or error.
 func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, prompt string) (string, error) {
-	model := "veo-3.1-lite-generate-001"
-	
+	model := s.videoModel
+	if model == "" {
+		model = "veo-3.1-lite-generate-001"
+	}
+
 	if prompt == "" {
 		prompt = DefaultVideoPrompt
 	}
@@ -150,7 +176,7 @@ func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, promp
 	}
 
 	// Call GenerateVideos
-	resp, err := s.client.Models.GenerateVideos(ctx, model, prompt, image, config)
+	resp, err := s.videoClient.Models.GenerateVideos(ctx, model, prompt, image, config)
 	if err != nil {
 		log.Printf("GenAI GenerateVideos failed: %v", err)
 		return "", fmt.Errorf("veo error: %w", err)
@@ -168,7 +194,7 @@ func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, promp
 			return "", fmt.Errorf("context cancelled during polling")
 		case <-ticker.C:
 			// Use native SDK polling
-			op, err := s.client.Operations.GetVideosOperation(ctx, resp, nil)
+			op, err := s.videoClient.Operations.GetVideosOperation(ctx, resp, nil)
 			if err != nil {
 				log.Printf("Native SDK Polling failed: %v", err)
 				continue

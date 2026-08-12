@@ -4,7 +4,9 @@
 
 **Banana Weather** is a GenMedia web application that visualizes the current "vibe" and atmospheric essence of a location using Generative AI. 
 
-It combines precise Geolocation with the creative power of **Google Gemini 3.1 Flash Image** (Nano Banana 2) and **Google Veo 3.1** to generate high-fidelity, vertical (9:16) 3D isometric art and looping videos representing the weather, architecture, and mood of your city in real-time.
+It combines precise Geolocation with the creative power of **Google Gemini 3.1 Flash Image** (Nano Banana 2, now GA) and **Google Veo 3.1** to generate high-fidelity, vertical (9:16) 3D isometric art and looping videos representing the weather, architecture, and mood of your city in real-time.
+
+> **Model note:** The default image model is `gemini-3.1-flash-image` (GA). You can opt into the higher-fidelity `gemini-3-pro-image` (Nano Banana Pro) or the lower-cost `gemini-3.1-flash-lite-image` via the `GEMINI_IMAGE` env var. Video defaults to `veo-3.1-lite-generate-001`, which is a **Preview-stage** model (Pre-GA Offerings Terms, no retirement SLA) retained intentionally for cost; override via `VEO_MODEL` (e.g. `veo-3.1-generate-001` or `veo-3.1-fast-generate-001` for GA tiers).
 
 ## Features
 
@@ -60,13 +62,27 @@ Create a `.env` file:
 
 ```bash
 GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
-GOOGLE_CLOUD_LOCATION="global" 
+IMAGE_LOCATION="global"      # Vertex location for Gemini 3 image models (global/us/eu). Veo does NOT use this.
+VEO_LOCATION="us-central1"   # Vertex region for Veo (a region, never global).
 GOOGLE_MAPS_API_KEY="your-maps-api-key"
-GEMINI_IMAGE="gemini-3.1-flash-image-preview" # Optional: Override the default image generation model
+GEMINI_IMAGE="gemini-3.1-flash-image" # Optional: Override the image model (e.g. gemini-3-pro-image for Nano Banana Pro, or gemini-3.1-flash-lite-image for lower cost)
+VEO_MODEL="veo-3.1-lite-generate-001" # Optional: Override the video model (e.g. veo-3.1-generate-001, veo-3.1-fast-generate-001)
 GENMEDIA_BUCKET="your-gcs-bucket-name"
 FIRESTORE_DATABASE="banana-weather"
 PORT=8080
 ```
+
+> **Locations differ per service.** Gemini 3 image models are served at `global`
+> (also `us`/`eu`), while Veo requires a **region** (default `us-central1`) and does
+> not run at `global`. These are configured separately via `IMAGE_LOCATION` and
+> `VEO_LOCATION`; the Cloud Run deploy region (default `us-central1`) is independent.
+> For backward compatibility, `GOOGLE_CLOUD_LOCATION` is still honored as the image
+> location fallback if `IMAGE_LOCATION` is unset.
+>
+> **Migration warning:** any deploy that previously set `GOOGLE_CLOUD_LOCATION` to a
+> non-default region specifically to drive Veo must now set `VEO_LOCATION` instead,
+> because `GOOGLE_CLOUD_LOCATION` now routes to the image location only and no longer
+> affects video.
 
 ### 3. Development
 *   **Run Local:** `./dev.sh`
