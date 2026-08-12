@@ -44,9 +44,13 @@ fi
 echo "Using Google Cloud Project: $PROJECT_ID"
 
 # 2. Set Defaults for Region and Service Name
-REGION="${REGION:-us-central1}"
+REGION="${REGION:-us-central1}"                 # Cloud Run deploy region
 SERVICE_NAME="${SERVICE_NAME:-banana-weather}"
-LOCATION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
+# GenAI locations differ per service:
+#   - Gemini 3 image models are served at "global" (also us/eu), NOT a region.
+#   - Veo requires a regional endpoint (e.g. us-central1).
+IMAGE_LOCATION="${IMAGE_LOCATION:-${GOOGLE_CLOUD_LOCATION:-global}}"
+VEO_LOCATION="${VEO_LOCATION:-us-central1}"
 
 # 3. Resolve Bucket Name (Default: project-service)
 if [ -z "$GENMEDIA_BUCKET" ]; then
@@ -80,7 +84,7 @@ SA_NAME="${SERVICE_NAME}-sa"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "Deploying $SERVICE_NAME to $REGION in project $PROJECT_ID..."
-echo "GenAI Location: $LOCATION"
+echo "Image Location: $IMAGE_LOCATION | Veo Location: $VEO_LOCATION"
 echo "Bucket: $GENMEDIA_BUCKET"
 echo "Firestore DB: $FIRESTORE_DATABASE"
 
@@ -90,7 +94,7 @@ ARGS=(
   "--project" "$PROJECT_ID"
   "--region" "$REGION"
   "--allow-unauthenticated"
-  "--set-env-vars" "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$LOCATION,GENMEDIA_BUCKET=$GENMEDIA_BUCKET,FIRESTORE_DATABASE=$FIRESTORE_DATABASE,GEMINI_IMAGE=${GEMINI_IMAGE:-gemini-3.1-flash-image},VEO_MODEL=${VEO_MODEL:-veo-3.1-lite-generate-001}"
+  "--set-env-vars" "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,IMAGE_LOCATION=$IMAGE_LOCATION,VEO_LOCATION=$VEO_LOCATION,GENMEDIA_BUCKET=$GENMEDIA_BUCKET,FIRESTORE_DATABASE=$FIRESTORE_DATABASE,GEMINI_IMAGE=${GEMINI_IMAGE:-gemini-3.1-flash-image},VEO_MODEL=${VEO_MODEL:-veo-3.1-lite-generate-001}"
 )
 
 # If you created a specific SA, uncomment the line below:

@@ -8,8 +8,13 @@ import (
 )
 
 type Config struct {
-	ProjectID        string
-	Location         string
+	ProjectID string
+	// ImageLocation is the Vertex AI location used for Gemini 3 image models.
+	// These models are served at "global" (also "us"/"eu"), NOT at a regular region.
+	ImageLocation string
+	// VideoLocation is the Vertex AI region used for Veo video generation
+	// (e.g. "us-central1"). Veo requires a regional endpoint, not "global".
+	VideoLocation    string
 	BucketName       string
 	DatabaseID       string
 	GoogleMapsKey    string
@@ -26,8 +31,13 @@ func Load() (*Config, error) {
 	_ = godotenv.Load("../../.env")
 
 	cfg := &Config{
-		ProjectID:        getEnvOr("GOOGLE_CLOUD_PROJECT", os.Getenv("PROJECT_ID")),
-		Location:         getEnvOr("GOOGLE_CLOUD_LOCATION", "us-central1"),
+		ProjectID: getEnvOr("GOOGLE_CLOUD_PROJECT", os.Getenv("PROJECT_ID")),
+		// Image (Gemini 3) models are served at "global"; allowed values: global/us/eu.
+		// GOOGLE_CLOUD_LOCATION is honored for backward compat (docs previously told
+		// users to set it to "global" for the image models), but IMAGE_LOCATION wins.
+		ImageLocation: firstNonEmpty(os.Getenv("IMAGE_LOCATION"), os.Getenv("GOOGLE_CLOUD_LOCATION"), "global"),
+		// Veo requires a regional endpoint; it never runs at "global".
+		VideoLocation:    getEnvOr("VEO_LOCATION", "us-central1"),
 		BucketName:       os.Getenv("GENMEDIA_BUCKET"),
 		DatabaseID:       getEnvOr("FIRESTORE_DATABASE", "(default)"),
 		GoogleMapsKey:    os.Getenv("GOOGLE_MAPS_API_KEY"),
@@ -54,4 +64,14 @@ func getEnvOr(key, defaultVal string) string {
 		return v
 	}
 	return defaultVal
+}
+
+// firstNonEmpty returns the first non-empty string from vals, or "" if all empty.
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

@@ -34,7 +34,7 @@ func main() {
 	}
 
 	// GenAI Service
-	genaiService, err := genai.NewService(context.Background(), cfg.ProjectID, cfg.Location, cfg.BucketName, cfg.GeminiImageModel, cfg.VeoVideoModel)
+	genaiService, err := genai.NewService(context.Background(), cfg.ProjectID, cfg.ImageLocation, cfg.VideoLocation, cfg.BucketName, cfg.GeminiImageModel, cfg.VeoVideoModel)
 	if err != nil {
 		log.Fatalf("FATAL: GenAI service failed to initialize. Error: %v", err)
 	}
