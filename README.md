@@ -4,7 +4,9 @@
 
 **Banana Weather** is a GenMedia web application that visualizes the current "vibe" and atmospheric essence of a location using Generative AI. 
 
-It combines precise Geolocation with the creative power of **Google Gemini 3.1 Flash Image** (Nano Banana 2) and **Google Veo 3.1** to generate high-fidelity, vertical (9:16) 3D isometric art and looping videos representing the weather, architecture, and mood of your city in real-time.
+It combines precise Geolocation with the creative power of **Google Gemini 3.1 Flash Image** (Nano Banana 2, now GA) and **Google Veo 3.1** to generate high-fidelity, vertical (9:16) 3D isometric art and looping videos representing the weather, architecture, and mood of your city in real-time.
+
+> **Model note:** The default image model is `gemini-3.1-flash-image` (GA). You can opt into the higher-fidelity `gemini-3-pro-image` (Nano Banana Pro) via the `GEMINI_IMAGE` env var. Video defaults to `veo-3.1-lite-generate-001` and is overridable via `VEO_MODEL` (e.g. `veo-3.1-generate-001` or `veo-3.1-fast-generate-001` for GA tiers).
 
 ## Features
 
@@ -62,7 +64,8 @@ Create a `.env` file:
 GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
 GOOGLE_CLOUD_LOCATION="global" 
 GOOGLE_MAPS_API_KEY="your-maps-api-key"
-GEMINI_IMAGE="gemini-3.1-flash-image-preview" # Optional: Override the default image generation model
+GEMINI_IMAGE="gemini-3.1-flash-image" # Optional: Override the image model (e.g. gemini-3-pro-image for Nano Banana Pro)
+VEO_MODEL="veo-3.1-lite-generate-001" # Optional: Override the video model (e.g. veo-3.1-generate-001, veo-3.1-fast-generate-001)
 GENMEDIA_BUCKET="your-gcs-bucket-name"
 FIRESTORE_DATABASE="banana-weather"
 PORT=8080

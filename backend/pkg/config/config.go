@@ -15,6 +15,7 @@ type Config struct {
 	GoogleMapsKey    string
 	Port             string
 	GeminiImageModel string
+	VeoVideoModel    string
 }
 
 // Load reads .env files and environment variables, validating required fields.
@@ -31,7 +32,8 @@ func Load() (*Config, error) {
 		DatabaseID:       getEnvOr("FIRESTORE_DATABASE", "(default)"),
 		GoogleMapsKey:    os.Getenv("GOOGLE_MAPS_API_KEY"),
 		Port:             getEnvOr("PORT", "8080"),
-		GeminiImageModel: getEnvOr("GEMINI_IMAGE", "gemini-3.1-flash-image-preview"),
+		GeminiImageModel: getEnvOr("GEMINI_IMAGE", "gemini-3.1-flash-image"),
+		VeoVideoModel:    getEnvOr("VEO_MODEL", "veo-3.1-lite-generate-001"),
 	}
 
 	if cfg.ProjectID == "" {

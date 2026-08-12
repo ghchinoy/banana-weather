@@ -17,9 +17,10 @@ type Service struct {
 	client     *genai.Client
 	bucketName string
 	imageModel string
+	videoModel string
 }
 
-func NewService(ctx context.Context, projectID, location, bucketName, imageModel string) (*Service, error) {
+func NewService(ctx context.Context, projectID, location, bucketName, imageModel, videoModel string) (*Service, error) {
 	log.Printf("Initializing GenAI Service. Project: %s, Location: %s, Bucket: %s", projectID, location, bucketName)
 
 	// Initialize GenAI Client
@@ -32,7 +33,7 @@ func NewService(ctx context.Context, projectID, location, bucketName, imageModel
 		return nil, err
 	}
 
-	return &Service{client: c, bucketName: bucketName, imageModel: imageModel}, nil
+	return &Service{client: c, bucketName: bucketName, imageModel: imageModel, videoModel: videoModel}, nil
 }
 
 // GenerateImage generates a 9:16 image for the given city.
@@ -88,7 +89,7 @@ Display a prominent weather icon at the top-center, with the date (x-small text)
 
 	model := s.imageModel
 	if model == "" {
-		model = "gemini-3.1-flash-image-preview"
+		model = "gemini-3.1-flash-image"
 	}
 
 	log.Printf("Generating image for city: %s using model: %s (GenerateContent)", city, model)
@@ -126,11 +127,14 @@ Display a prominent weather icon at the top-center, with the date (x-small text)
 
 const DefaultVideoPrompt = "The camera moves in parallax as the elements in the image move naturally, while the forecast data—the bold title—remains fixed."
 
-// GenerateVideo generates a 9:16 video using Veo 3.1 Fast.
+// GenerateVideo generates a 9:16 video using Veo 3.1 (Lite by default).
 // Returns: GS URI (string) or error.
 func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, prompt string) (string, error) {
-	model := "veo-3.1-lite-generate-001"
-	
+	model := s.videoModel
+	if model == "" {
+		model = "veo-3.1-lite-generate-001"
+	}
+
 	if prompt == "" {
 		prompt = DefaultVideoPrompt
 	}

@@ -3,7 +3,7 @@
 *A GenMedia application that visualizes the current "vibe" of a city using Generative AI.*
 
 ## Project Overview
-Banana Weather is a simple yet powerful application that demonstrates the "Oracle & Temple" architecture. It allows users to select a city and generates a high-fidelity, 9:16 artistic representation of that location's current essence using **Google Gemini 3 Pro Image (Nano Banana Pro)** via Vertex AI.
+Banana Weather is a simple yet powerful application that demonstrates the "Oracle & Temple" architecture. It allows users to select a city and generates a high-fidelity, 9:16 artistic representation of that location's current essence using Google's Gemini image models via Vertex AI. The default is **Gemini 3.1 Flash Image (Nano Banana 2)** (`gemini-3.1-flash-image`, GA); you can switch to **Gemini 3 Pro Image (Nano Banana Pro)** (`gemini-3-pro-image`) via the `GEMINI_IMAGE` env var for higher fidelity.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ The system follows a client-server model:
     *   **Role:** API Server, Static File Host, and GenAI Orchestrator.
     *   **Responsibilities:**
         *   **Geocoding:** Google Maps API for location resolution and reverse geocoding.
-        *   **Image Generation:** Vertex AI (`gemini-3-pro-image-preview`) using `GenerateContent`.
+        *   **Image Generation:** Vertex AI (`gemini-3.1-flash-image` by default, or `gemini-3-pro-image`) using `GenerateContent`.
         *   **Serving:** Hosts the compiled Flutter Web application.
 
 2.  **The Frontend (Flutter):** The user interface.
@@ -39,9 +39,10 @@ Create a `.env` file:
 
 ```bash
 GOOGLE_CLOUD_PROJECT="<your-gcp-project>"
-GOOGLE_CLOUD_LOCATION="global" # Required for Gemini 3 Pro Image
+GOOGLE_CLOUD_LOCATION="global" # Required for Gemini 3 image models
 GOOGLE_MAPS_API_KEY="<your-maps-key>"
-GEMINI_IMAGE="gemini-3.1-flash-image-preview" # Optional: Override the default image generation model
+GEMINI_IMAGE="gemini-3.1-flash-image" # Optional: Override the image model (e.g. gemini-3-pro-image)
+VEO_MODEL="veo-3.1-lite-generate-001" # Optional: Override the video model (e.g. veo-3.1-generate-001)
 PORT=8080
 ```
 
@@ -87,8 +88,8 @@ We use the `bd` (Beads) tool for all issue tracking.
 ### Go (Backend)
 *   **Structure:** `pkg/` for business logic (GenAI, Maps, Storage), `api/` for HTTP handlers.
 *   **GenAI:**
-    *   **Images:** Use `GenerateContent` (Multimodal API) for Gemini 3 Pro Image.
-    *   **Videos:** Use `GenerateVideos` (Imagen API) for Veo 3.1.
+    *   **Images:** Use `GenerateContent` (Multimodal API) for the Gemini 3 image models.
+    *   **Videos:** Use `GenerateVideos` (Veo API) for Veo 3.1.
     *   **LRO Polling:** Use `s.client.Operations.GetVideosOperation` (Native SDK) or `aiplatform` SDK if needed for robust polling.
     *   **Storage:** Use `OutputGCSURI` to write large assets directly to GCS. Use `pkg/storage` for manual uploads.
 *   **Logging:** Use `log` for tracking request flows and errors.
@@ -122,7 +123,7 @@ We use the `bd` (Beads) tool for all issue tracking.
 
 ### Troubleshooting
 *   **500 Errors:** Check backend logs via Cloud Logging.
-*   **"Model not found"::** Ensure `GOOGLE_CLOUD_LOCATION` is set to `global` for `gemini-3-pro-image-preview`.
+*   **"Model not found"::** Ensure `GOOGLE_CLOUD_LOCATION` is set to `global` for the Gemini 3 image models (`gemini-3.1-flash-image` / `gemini-3-pro-image`). Note the `-preview` suffixes were retired when these models went GA (2026-05-28).
 *   **"Connection Refused":** Verify the Frontend is using relative URLs in production.
 *   **"UnimplementedError: init()":** Run `flutter clean` and rebuild to fix Web Plugin registration issues.
 *   **Video Not Playing:** Check CORS on the GCS bucket and ensure `setVolume(0.0)` is called.
