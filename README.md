@@ -78,6 +78,11 @@ PORT=8080
 > `VEO_LOCATION`; the Cloud Run deploy region (default `us-central1`) is independent.
 > For backward compatibility, `GOOGLE_CLOUD_LOCATION` is still honored as the image
 > location fallback if `IMAGE_LOCATION` is unset.
+>
+> **Migration warning:** any deploy that previously set `GOOGLE_CLOUD_LOCATION` to a
+> non-default region specifically to drive Veo must now set `VEO_LOCATION` instead,
+> because `GOOGLE_CLOUD_LOCATION` now routes to the image location only and no longer
+> affects video.
 
 ### 3. Development
 *   **Run Local:** `./dev.sh`

@@ -54,6 +54,10 @@ PORT=8080
 > `IMAGE_LOCATION` for images and `VEO_LOCATION` for video. The Cloud Run deploy
 > region (`--region`, default `us-central1`) is independent of both.
 >
+> **Migration warning:** any deploy that previously set `GOOGLE_CLOUD_LOCATION` to a
+> non-default region specifically to drive Veo must migrate to `VEO_LOCATION`, since
+> `GOOGLE_CLOUD_LOCATION` now routes to the image location only and no longer affects video.
+>
 > **Video default is Preview.** `veo-3.1-lite-generate-001` is a Preview-stage model
 > (Pre-GA Offerings Terms, no retirement SLA). It is retained intentionally for cost.
 > For a GA posture, set `VEO_MODEL=veo-3.1-generate-001` (quality) or
