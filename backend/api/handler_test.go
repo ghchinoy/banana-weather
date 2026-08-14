@@ -147,6 +147,9 @@ func TestHandleGetWeather_CacheMiss_SSEStream(t *testing.T) {
 	if got := rec.Header().Get("Content-Type"); got != "text/event-stream" {
 		t.Fatalf("Content-Type = %q, want text/event-stream", got)
 	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-cache" {
+		t.Fatalf("Cache-Control = %q, want no-cache", got)
+	}
 
 	events := parseSSE(t, rec.Body.String())
 	if len(events) == 0 {
