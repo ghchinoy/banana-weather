@@ -1,3 +1,4 @@
+// Package database provides Firestore persistence for weather locations and presets.
 package database
 
 import (
@@ -11,10 +12,12 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+// Client wraps a Google Cloud Firestore client for the Banana Weather database.
 type Client struct {
 	fs *firestore.Client
 }
 
+// NewClient initializes a Firestore client connected to the specified project and database ID.
 func NewClient(ctx context.Context, projectID, databaseID string) (*Client, error) {
 	log.Printf("Initializing Firestore. Project: %s, Database: %s", projectID, databaseID)
 
@@ -32,12 +35,11 @@ func (c *Client) Close() error {
 	return c.fs.Close()
 }
 
-// -- Models --
-
+// Location represents a weather location document stored in the Firestore "locations" collection.
 type Location struct {
 	ID          string    `firestore:"id" json:"id"`
-	Name        string    `firestore:"name" json:"name"`         // Display Name
-	Category    string    `firestore:"category" json:"category"` // Grouping
+	Name        string    `firestore:"name" json:"name"`             // Display Name
+	Category    string    `firestore:"category" json:"category"`     // Grouping
 	CityQuery   string    `firestore:"city_query" json:"city_query"` // Original input
 	ImageURL    string    `firestore:"image_url" json:"image_url"`
 	VideoURL    string    `firestore:"video_url" json:"video_url"`
@@ -74,7 +76,7 @@ func (c *Client) UpsertLocation(ctx context.Context, loc Location) error {
 	// Use ID as document ID if possible, ensuring uniqueness.
 	// If ID is empty (new user search), maybe hash the city query?
 	// For presets, ID is set.
-	
+
 	if loc.ID == "" {
 		return fmt.Errorf("location ID is required")
 	}
@@ -97,13 +99,12 @@ func (c *Client) GetLocation(ctx context.Context, id string) (*Location, error) 
 	return &loc, nil
 }
 
-// -- Admin Methods --
-
+// Stats holds aggregate counts and activity timestamps for the locations collection.
 type Stats struct {
-	TotalLocations int64
-	Presets        int64
-	UserGenerated  int64
-	LastUpdated    time.Time
+	TotalLocations int64     `json:"total_locations"`
+	Presets        int64     `json:"presets"`
+	UserGenerated  int64     `json:"user_generated"`
+	LastUpdated    time.Time `json:"last_updated"`
 }
 
 // GetStats returns aggregate statistics about the locations collection.
@@ -134,7 +135,7 @@ func (c *Client) GetStats(ctx context.Context) (*Stats, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to count presets: %w", err)
 	}
-	
+
 	var presets int64
 	if val, ok := resPresets["count"]; ok {
 		if v, ok := val.(*firestorepb.Value); ok {

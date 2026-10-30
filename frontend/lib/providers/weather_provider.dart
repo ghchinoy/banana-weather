@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import '../models/preset.dart';
@@ -16,6 +16,8 @@ class WeatherProvider with ChangeNotifier {
   List<Preset> _presets = [];
   bool _isPresetLoaded = false;
   DateTime? _lastUpdated;
+  StreamSubscription<String>? _streamSub;
+  http.Client? _activeClient;
 
   String? get city => _city;
   String? get imageBase64 => _imageBase64;
@@ -28,17 +30,32 @@ class WeatherProvider with ChangeNotifier {
   bool get isPresetLoaded => _isPresetLoaded;
   DateTime? get lastUpdated => _lastUpdated;
 
+  void _cancelActiveStream() {
+    _streamSub?.cancel();
+    _streamSub = null;
+    _activeClient?.close();
+    _activeClient = null;
+  }
+
+  @override
+  void dispose() {
+    _cancelActiveStream();
+    super.dispose();
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
   void loadPreset(Preset p) {
+    _cancelActiveStream();
     _city = p.name;
     _imageUrl = p.imageUrl;
     _videoUrl = p.videoUrl;
     _lastUpdated = p.lastUpdated;
     _imageBase64 = null; // Clear generated image
+    _isLoading = false;
     _error = null;
     _statusMessage = null;
     _isPresetLoaded = true;
@@ -55,7 +72,7 @@ class WeatherProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print("Failed to fetch presets: $e");
+      debugPrint("Failed to fetch presets: $e");
     }
   }
 
@@ -92,6 +109,7 @@ class WeatherProvider with ChangeNotifier {
   }
 
   Future<void> fetchWeather({String? city, double? lat, double? lng}) async {
+    _cancelActiveStream();
     _isLoading = true;
     _error = null;
     _statusMessage = "Connecting...";
@@ -108,27 +126,30 @@ class WeatherProvider with ChangeNotifier {
       if (lat != null && lng != null) {
         uri = Uri.parse('$baseUrl/api/weather?lat=$lat&lng=$lng');
       } else if (city != null && city.isNotEmpty) {
-        uri = Uri.parse('$baseUrl/api/weather?city=$city');
+        final encodedCity = Uri.encodeQueryComponent(city);
+        uri = Uri.parse('$baseUrl/api/weather?city=$encodedCity');
       } else {
-         uri = Uri.parse('$baseUrl/api/weather?city=San Francisco');
+        uri = Uri.parse('$baseUrl/api/weather?city=San%20Francisco');
       }
       
       final request = http.Request('GET', uri);
       request.headers['Accept'] = 'text/event-stream';
 
       final client = http.Client();
+      _activeClient = client;
       final response = await client.send(request);
 
       if (response.statusCode != 200) {
         _error = 'Failed to connect: ${response.statusCode}';
         _isLoading = false;
+        _cancelActiveStream();
         notifyListeners();
         return;
       }
 
       String currentEvent = '';
 
-      response.stream
+      _streamSub = response.stream
           .transform(const Utf8Decoder())
           .transform(const LineSplitter())
           .listen(
@@ -143,17 +164,18 @@ class WeatherProvider with ChangeNotifier {
         onError: (e) {
           _error = 'Stream error: $e';
           _isLoading = false;
+          _cancelActiveStream();
           notifyListeners();
         },
         onDone: () {
-          // If we finished without a result, that might be an issue, 
-          // but usually 'result' event handles the completion.
+          _cancelActiveStream();
         },
       );
 
     } catch (e) {
       _error = 'Error: $e';
       _isLoading = false;
+      _cancelActiveStream();
       notifyListeners();
     }
   }

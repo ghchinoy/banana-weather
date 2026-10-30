@@ -1,5 +1,5 @@
 # Build Stage: Go Backend
-FROM golang:1.25-bookworm as builder
+FROM golang:1.26-bookworm AS builder
 
 WORKDIR /app
 
@@ -9,7 +9,6 @@ COPY backend/ ./backend/
 # Build Go Server
 WORKDIR /app/backend
 RUN go mod download
-RUN go mod tidy
 RUN go build -o server main.go
 
 # Runtime Stage
@@ -17,8 +16,10 @@ FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# Install CA certificates for external API calls
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install CA certificates for external API calls and create non-root user
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --uid 10001 --no-create-home appuser
 
 # Copy built backend from builder
 COPY --from=builder /app/backend/server /app/server
@@ -30,6 +31,7 @@ COPY frontend/build/web /app/frontend/build/web
 # Environment Variables
 ENV PORT=8080
 
-# Run Server
+# Run Server as non-root user
+USER appuser
 WORKDIR /app
 CMD ["./server"]

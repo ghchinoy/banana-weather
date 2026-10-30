@@ -4,9 +4,9 @@
 
 **Banana Weather** is a GenMedia web application that visualizes the current "vibe" and atmospheric essence of a location using Generative AI. 
 
-It combines precise Geolocation with the creative power of **Google Gemini 3.1 Flash Image** (Nano Banana 2, now GA) and **Google Veo 3.1** to generate high-fidelity, vertical (9:16) 3D isometric art and looping videos representing the weather, architecture, and mood of your city in real-time.
+It combines precise Geolocation with the creative power of **Google Gemini Nano Banana 2.1** (`gemini-nano-banana-2.1`) and **Google Veo 3.1** to generate high-fidelity, vertical (9:16) 3D isometric art and looping videos representing the weather, architecture, and mood of your city in real-time.
 
-> **Model note:** The default image model is `gemini-3.1-flash-image` (GA). You can opt into the higher-fidelity `gemini-3-pro-image` (Nano Banana Pro) or the lower-cost `gemini-3.1-flash-lite-image` via the `GEMINI_IMAGE` env var. Video defaults to `veo-3.1-lite-generate-001`, which is a **Preview-stage** model (Pre-GA Offerings Terms, no retirement SLA) retained intentionally for cost; override via `VEO_MODEL` (e.g. `veo-3.1-generate-001` or `veo-3.1-fast-generate-001` for GA tiers).
+> **Model note:** The default image model is `gemini-nano-banana-2.1` (served at `global`). You can also use `gemini-3.1-flash-image` (Nano Banana 2, GA), `gemini-3-pro-image` (Nano Banana Pro), or the lower-cost `gemini-3.1-flash-lite-image` (note: Flash-Lite does not support Google Search live weather grounding) via the `GEMINI_IMAGE` env var. Video defaults to `veo-3.1-lite-generate-001`, which is a **Preview-stage** model (Pre-GA Offerings Terms, no retirement SLA) retained intentionally for cost; override via `VEO_MODEL` (e.g. `veo-3.1-generate-001` or `veo-3.1-fast-generate-001` for GA tiers).
 
 ## Features
 
@@ -28,10 +28,10 @@ It combines precise Geolocation with the creative power of **Google Gemini 3.1 F
 
 The system follows a Client-Server architecture:
 
-1.  **The Backend (Go 1.25):** 
+1.  **The Backend (Go 1.26):** 
     *   **Orchestrator:** Handles API requests, validating inputs.
     *   **Geocoding:** Interacts with Google Maps Platform.
-    *   **Generative AI:** Gemini 3.1 Flash Image & Veo 3.1.
+    *   **Generative AI:** Gemini 3.1 Flash Image / Nano Banana 2.1 & Veo 3.1.
     *   **Persistence:** Uses **Firestore** for metadata/caching and **Cloud Storage** for assets.
     *   **Server:** Serves the compiled Flutter Web application.
 
@@ -65,7 +65,7 @@ GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
 IMAGE_LOCATION="global"      # Vertex location for Gemini 3 image models (global/us/eu). Veo does NOT use this.
 VEO_LOCATION="us-central1"   # Vertex region for Veo (a region, never global).
 GOOGLE_MAPS_API_KEY="your-maps-api-key"
-GEMINI_IMAGE="gemini-3.1-flash-image" # Optional: Override the image model (e.g. gemini-3-pro-image for Nano Banana Pro, or gemini-3.1-flash-lite-image for lower cost)
+GEMINI_IMAGE="gemini-nano-banana-2.1" # Optional: Override the image model (e.g. gemini-3.1-flash-image, gemini-3-pro-image, or gemini-3.1-flash-lite-image)
 VEO_MODEL="veo-3.1-lite-generate-001" # Optional: Override the video model (e.g. veo-3.1-generate-001, veo-3.1-fast-generate-001)
 GENMEDIA_BUCKET="your-gcs-bucket-name"
 FIRESTORE_DATABASE="banana-weather"

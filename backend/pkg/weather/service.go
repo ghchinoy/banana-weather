@@ -1,3 +1,4 @@
+// Package weather orchestrates geocoding, caching, and GenAI media generation.
 package weather
 
 import (
@@ -5,35 +6,38 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
+	"strconv"
 	"strings"
 	"time"
 
 	"banana-weather/pkg/database"
 )
 
-// -- Interfaces --
-
+// MapService defines the geocoding operations required by the weather orchestrator.
 type MapService interface {
 	GetReverseGeocoding(ctx context.Context, lat, lng float64) (string, error)
 	GetCityLocation(ctx context.Context, city string) (string, float64, float64, error)
 }
 
+// GenAIService defines the image and video generation operations required by the weather orchestrator.
 type GenAIService interface {
 	GenerateImage(ctx context.Context, city string, extraContext string, promptMode int) (string, error)
 	GenerateVideo(ctx context.Context, inputImageURI string, prompt string) (string, error)
 }
 
+// StorageService defines the Cloud Storage upload operations required by the weather orchestrator.
 type StorageService interface {
 	UploadImage(ctx context.Context, base64Data string, fileName string) (string, string, error)
 }
 
+// LocationRepo defines the persistence operations required by the weather orchestrator.
 type LocationRepo interface {
 	GetLocation(ctx context.Context, id string) (*database.Location, error)
 	UpsertLocation(ctx context.Context, loc database.Location) error
 }
 
-// -- Service --
-
+// Service coordinates geocoding, Firestore caching, and GenAI media generation.
 type Service struct {
 	Maps    MapService
 	GenAI   GenAIService
@@ -41,6 +45,7 @@ type Service struct {
 	DB      LocationRepo
 }
 
+// NewService constructs a weather orchestration Service from its dependencies.
 func NewService(m MapService, g GenAIService, s StorageService, db LocationRepo) *Service {
 	return &Service{
 		Maps:    m,
@@ -50,7 +55,7 @@ func NewService(m MapService, g GenAIService, s StorageService, db LocationRepo)
 	}
 }
 
-// WeatherResponse mirrors the JSON response expected by the frontend
+// WeatherResponse mirrors the JSON response expected by the frontend.
 type WeatherResponse struct {
 	City        string    `json:"city"`
 	ImageBase64 string    `json:"image_base64,omitempty"`
@@ -58,8 +63,20 @@ type WeatherResponse struct {
 	LastUpdated time.Time `json:"last_updated"`
 }
 
-// StatusCallback is a function that sends real-time updates to the client
+// StatusCallback is a function that sends real-time updates to the client.
 type StatusCallback func(event string, data string)
+
+// ValidateLocationID checks that a location or preset ID does not contain path separators or traversal sequences.
+func ValidateLocationID(id string) error {
+	trimmed := strings.TrimSpace(id)
+	if trimmed == "" {
+		return fmt.Errorf("location id cannot be empty")
+	}
+	if strings.Contains(trimmed, "/") || strings.Contains(trimmed, "\\") || strings.Contains(trimmed, "..") {
+		return fmt.Errorf("location id %q must not contain path separators or '..'", id)
+	}
+	return nil
+}
 
 func sanitizeID(s string) string {
 	var result []rune
@@ -73,10 +90,18 @@ func sanitizeID(s string) string {
 	return string(result)
 }
 
+const maxCityQueryLength = 200
+
 // GetWeatherFlow orchestrates the entire weather generation process (Maps -> Cache -> AI -> Storage)
 func (s *Service) GetWeatherFlow(ctx context.Context, cityQuery, latStr, lngStr string, sendStatus StatusCallback) error {
 	var formattedCity string
 	var err error
+
+	cityQuery = strings.TrimSpace(cityQuery)
+	if len(cityQuery) > maxCityQueryLength {
+		sendStatus("error", "City name is too long.")
+		return fmt.Errorf("city query exceeds max length (%d)", maxCityQueryLength)
+	}
 
 	log.Printf("Weather Flow Started. City: %s, Lat: %s, Lng: %s", cityQuery, latStr, lngStr)
 	sendStatus("status", "Identifying location...")
@@ -84,14 +109,17 @@ func (s *Service) GetWeatherFlow(ctx context.Context, cityQuery, latStr, lngStr 
 	// 1. Resolve Location
 	if latStr != "" && lngStr != "" {
 		// Handle Coordinates
-		var lat, lng float64
-		fmt.Sscanf(latStr, "%f", &lat)
-		fmt.Sscanf(lngStr, "%f", &lng)
+		lat, latErr := strconv.ParseFloat(latStr, 64)
+		lng, lngErr := strconv.ParseFloat(lngStr, 64)
+		if latErr != nil || lngErr != nil || math.IsNaN(lat) || math.IsInf(lat, 0) || math.IsNaN(lng) || math.IsInf(lng, 0) || lat < -90 || lat > 90 || lng < -180 || lng > 180 {
+			sendStatus("error", "Invalid coordinates provided.")
+			return fmt.Errorf("invalid coordinates lat=%q lng=%q", latStr, lngStr)
+		}
 
 		formattedCity, err = s.Maps.GetReverseGeocoding(ctx, lat, lng)
 		if err != nil {
 			log.Printf("Error reverse geocoding: %v", err)
-			sendStatus("error", "Failed to resolve location: "+err.Error())
+			sendStatus("error", "Failed to resolve location from coordinates.")
 			return err
 		}
 	} else {
@@ -103,8 +131,8 @@ func (s *Service) GetWeatherFlow(ctx context.Context, cityQuery, latStr, lngStr 
 		// Resolve City
 		formattedCity, _, _, err = s.Maps.GetCityLocation(ctx, cityQuery)
 		if err != nil {
-			log.Printf("Error resolving location for city '%s': %v", cityQuery, err)
-			sendStatus("error", "Failed to find city: "+err.Error())
+			log.Printf("Error resolving location for city %q: %v", cityQuery, err)
+			sendStatus("error", "Failed to find city.")
 			return err
 		}
 	}
@@ -141,8 +169,8 @@ func (s *Service) GetWeatherFlow(ctx context.Context, cityQuery, latStr, lngStr 
 	// Defaulting to Random prompt style (0) for standard web flow
 	imgBase64, err := s.GenAI.GenerateImage(ctx, formattedCity, "", 0)
 	if err != nil {
-		log.Printf("Error generating image for '%s': %v", formattedCity, err)
-		sendStatus("error", "Failed to generate image: "+err.Error())
+		log.Printf("Error generating image for %q: %v", formattedCity, err)
+		sendStatus("error", "Failed to generate image for location.")
 		return err
 	}
 	log.Printf("Successfully generated image for: %s", formattedCity)
@@ -175,14 +203,16 @@ func (s *Service) GetWeatherFlow(ctx context.Context, cityQuery, latStr, lngStr 
 
 	// Upsert DB with Image URL (Partial Save)
 	currentLoc := database.Location{
-		ID:        locID,
-		Name:      formattedCity,
-		CityQuery: formattedCity,
-		ImageURL:  publicImageURL,
-		IsPreset:  false,
+		ID:          locID,
+		Name:        formattedCity,
+		CityQuery:   formattedCity,
+		ImageURL:    publicImageURL,
+		IsPreset:    false,
 		LastUpdated: time.Now(),
 	}
-	s.DB.UpsertLocation(ctx, currentLoc)
+	if err := s.DB.UpsertLocation(ctx, currentLoc); err != nil {
+		log.Printf("Warning: failed to upsert location image URL for %s: %v", locID, err)
+	}
 
 	sendStatus("status", "Animating (Veo 3.1)... this may take a minute.")
 
@@ -196,22 +226,17 @@ func (s *Service) GetWeatherFlow(ctx context.Context, cityQuery, latStr, lngStr 
 
 	sendStatus("status", "Finalizing video...")
 
-	// Convert gs://bucket/path to https://storage.googleapis.com/bucket/path
-	// Assuming bucket is public or we need signed URLs. Code used string replacement before.
-	// We need the bucket name to do the replacement if the URI is gs://...
-	// The GenAI service returns gs://...
-	// We can extract bucket from there or read env again. 
-	// Ideally the service shouldn't know about ENV too much, but let's stick to the previous pattern:
-	// "https://storage.googleapis.com/" + videoGsURI[5:]
-	
-	publicVideoURL := "https://storage.googleapis.com/" + videoGsURI[5:]
+	// Convert gs://bucket/path to https://storage.googleapis.com/bucket/path safely
+	publicVideoURL := "https://storage.googleapis.com/" + strings.TrimPrefix(videoGsURI, "gs://")
 
 	log.Printf("Video available at: %s", publicVideoURL)
 	sendStatus("video", publicVideoURL)
 
 	// Final Upsert with Video URL
 	currentLoc.VideoURL = publicVideoURL
-	s.DB.UpsertLocation(ctx, currentLoc)
+	if err := s.DB.UpsertLocation(ctx, currentLoc); err != nil {
+		log.Printf("Warning: failed to upsert location video URL for %s: %v", locID, err)
+	}
 
 	return nil
 }

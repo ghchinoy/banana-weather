@@ -1,3 +1,4 @@
+// Package genai wraps the Google GenAI Vertex AI clients for image and video generation.
 package genai
 
 import (
@@ -13,6 +14,7 @@ import (
 	"google.golang.org/genai"
 )
 
+// Service orchestrates image and video generation across per-location Vertex AI clients.
 type Service struct {
 	// imageClient is bound to the image location ("global" for Gemini 3 image models).
 	imageClient *genai.Client
@@ -100,7 +102,7 @@ Display a prominent weather icon at the top-center, with the date (x-small text)
 		// Use Secondary Prompt
 		log.Printf("Selected Secondary (Drink) Prompt for %s (Mode: %d)", city, promptMode)
 		// Fill [CITY] placeholder
-		p := strings.Replace(secondaryPromptTemplate, "[CITY]", city, -1)
+		p := strings.ReplaceAll(secondaryPromptTemplate, "[CITY]", city)
 		// Instruct model to resolve [DRINK]
 		prompt = fmt.Sprintf("%s\n\nDRINK: the most common AM drink for this location", p)
 	}
@@ -111,42 +113,66 @@ Display a prominent weather icon at the top-center, with the date (x-small text)
 
 	model := s.imageModel
 	if model == "" {
-		model = "gemini-3.1-flash-image"
+		model = "gemini-nano-banana-2.1"
 	}
 
 	log.Printf("Generating image for city: %s using model: %s (GenerateContent)", city, model)
 
-	resp, err := s.imageClient.Models.GenerateContent(ctx, model, genai.Text(prompt), &genai.GenerateContentConfig{
+	genCfg := &genai.GenerateContentConfig{
 		ResponseModalities: []string{"IMAGE"},
-		Tools: []*genai.Tool{
-			{GoogleSearch: &genai.GoogleSearch{}},
-		},
 		ImageConfig: &genai.ImageConfig{
 			AspectRatio: "9:16",
 		},
-	})
+	}
+	// gemini-3.1-flash-lite-image rejects tools payloads with HTTP 400 INVALID_ARGUMENT.
+	if !strings.Contains(strings.ToLower(model), "lite") {
+		genCfg.Tools = []*genai.Tool{
+			{GoogleSearch: &genai.GoogleSearch{}},
+		}
+	} else {
+		log.Printf("Skipping GoogleSearch tool for lite image model %s", model)
+	}
+
+	resp, err := s.imageClient.Models.GenerateContent(ctx, model, genai.Text(prompt), genCfg)
 	if err != nil {
 		log.Printf("GenAI GenerateContent failed: %v", err)
 		return "", fmt.Errorf("genai error: %w", err)
 	}
 
-	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
+	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil || len(resp.Candidates[0].Content.Parts) == 0 {
 		log.Printf("GenAI returned no candidates or parts")
 		return "", fmt.Errorf("no content generated")
 	}
 
-	// Iterate through parts to find the image
-	for _, part := range resp.Candidates[0].Content.Parts {
-		if part.InlineData != nil {
-			log.Printf("Image generated successfully. Bytes: %d", len(part.InlineData.Data))
-			return base64.StdEncoding.EncodeToString(part.InlineData.Data), nil
-		}
+	imgBytes := extractFinalImageBytes(resp.Candidates[0].Content.Parts)
+	if len(imgBytes) > 0 {
+		log.Printf("Image generated successfully. Bytes: %d", len(imgBytes))
+		return base64.StdEncoding.EncodeToString(imgBytes), nil
 	}
-	
+
 	log.Printf("No inline image data found in response")
 	return "", fmt.Errorf("no image data found in response")
 }
 
+// extractFinalImageBytes selects the final non-thought image part from a candidate's parts.
+// Models with thinking enabled by default (such as gemini-nano-banana-2.1) emit an interim
+// draft image marked Thought=true before the final higher-resolution render (Thought=false).
+// If only thought image parts are present, it falls back to the last image part.
+func extractFinalImageBytes(parts []*genai.Part) []byte {
+	var fallback []byte
+	for _, part := range parts {
+		if part == nil || part.InlineData == nil || len(part.InlineData.Data) == 0 {
+			continue
+		}
+		if !part.Thought {
+			return part.InlineData.Data
+		}
+		fallback = part.InlineData.Data
+	}
+	return fallback
+}
+
+// DefaultVideoPrompt is the default camera motion prompt passed to Veo when no override is supplied.
 const DefaultVideoPrompt = "The camera moves in parallax as the elements in the image move naturally, while the forecast data—the bold title—remains fixed."
 
 // GenerateVideo generates a 9:16 video using Veo 3.1 (Lite by default).
@@ -165,13 +191,13 @@ func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, promp
 
 	// Construct the image object
 	image := &genai.Image{
-		GCSURI: inputImageURI,
+		GCSURI:   inputImageURI,
 		MIMEType: "image/png",
 	}
 
 	// Config
 	config := &genai.GenerateVideosConfig{
-		AspectRatio: "9:16",
+		AspectRatio:  "9:16",
 		OutputGCSURI: fmt.Sprintf("gs://%s/videos/", s.bucketName),
 	}
 
@@ -184,6 +210,13 @@ func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, promp
 
 	log.Printf("Veo operation started. ID: %s", resp.Name)
 
+	// Ensure polling is bounded even if the caller passed context.Background().
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
+		defer cancel()
+	}
+
 	// Polling Loop using Native SDK method
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -191,7 +224,7 @@ func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, promp
 	for {
 		select {
 		case <-ctx.Done():
-			return "", fmt.Errorf("context cancelled during polling")
+			return "", fmt.Errorf("context cancelled during polling: %w", ctx.Err())
 		case <-ticker.C:
 			// Use native SDK polling
 			op, err := s.videoClient.Operations.GetVideosOperation(ctx, resp, nil)
@@ -204,38 +237,18 @@ func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, promp
 				if op.Error != nil {
 					return "", fmt.Errorf("operation failed: %v", op.Error)
 				}
-				
+
 				if op.Response == nil || len(op.Response.GeneratedVideos) == 0 {
 					return "", fmt.Errorf("operation done but no videos found")
 				}
 
 				v := op.Response.GeneratedVideos[0]
-				
-				// Hack: Marshal/Unmarshal to bypass unknown struct field name
-				// The SDK is alpha and field names vary (GcsUri vs VideoUri vs Uri).
-				b, _ := json.Marshal(v)
-				var m map[string]interface{}
-				_ = json.Unmarshal(b, &m)
-				
-				// Top level check
-				uri, _ := m["gcsUri"].(string)
-				if uri == "" { uri, _ = m["videoUri"].(string) }
-				if uri == "" { uri, _ = m["uri"].(string) }
-
-				// Nested check (video.uri) - This matches the logs!
-				if uri == "" {
-					if vid, ok := m["video"].(map[string]interface{}); ok {
-						uri, _ = vid["uri"].(string)
-						if uri == "" { uri, _ = vid["gcsUri"].(string) }
-						if uri == "" { uri, _ = vid["videoUri"].(string) }
-					}
-				}
-
-				if uri != "" {
+				if uri := extractGeneratedVideoURI(v); uri != "" {
 					log.Printf("Video generated (GCS URI): %s", uri)
 					return uri, nil
 				}
 
+				b, _ := json.Marshal(v)
 				return "", fmt.Errorf("video generated but URI is empty (JSON: %s)", string(b))
 			}
 			log.Printf("Still polling Veo...")
@@ -243,6 +256,35 @@ func (s *Service) GenerateVideo(ctx context.Context, inputImageURI string, promp
 	}
 }
 
-func ptr[T any](v T) *T {
-	return &v
+func extractGeneratedVideoURI(v *genai.GeneratedVideo) string {
+	if v == nil {
+		return ""
+	}
+	if v.Video != nil && v.Video.URI != "" {
+		return v.Video.URI
+	}
+
+	// Fallback: inspect serialized JSON in case field names vary across backend versions.
+	b, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		return ""
+	}
+
+	for _, key := range []string{"gcsUri", "videoUri", "uri"} {
+		if uri, ok := m[key].(string); ok && uri != "" {
+			return uri
+		}
+	}
+	if vid, ok := m["video"].(map[string]any); ok {
+		for _, key := range []string{"uri", "gcsUri", "videoUri"} {
+			if uri, ok := vid[key].(string); ok && uri != "" {
+				return uri
+			}
+		}
+	}
+	return ""
 }

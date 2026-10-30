@@ -1,3 +1,4 @@
+// Package maps provides geocoding and reverse-geocoding via the Google Maps API.
 package maps
 
 import (
@@ -8,10 +9,12 @@ import (
 	"googlemaps.github.io/maps"
 )
 
+// Service wraps the Google Maps client for geocoding requests.
 type Service struct {
 	client *maps.Client
 }
 
+// NewService constructs a Maps Service using the provided Google Maps API key.
 func NewService(apiKey string) (*Service, error) {
 	if apiKey == "" {
 		return nil, fmt.Errorf("GOOGLE_MAPS_API_KEY is empty")
@@ -24,6 +27,7 @@ func NewService(apiKey string) (*Service, error) {
 	return &Service{client: c}, nil
 }
 
+// GetReverseGeocoding resolves latitude and longitude coordinates to a human-readable city name.
 func (s *Service) GetReverseGeocoding(ctx context.Context, lat, lng float64) (string, error) {
 	log.Printf("Reverse geocoding lat: %f, lng: %f", lat, lng)
 	r, err := s.client.Geocode(ctx, &maps.GeocodingRequest{
@@ -78,15 +82,16 @@ func (s *Service) GetReverseGeocoding(ctx context.Context, lat, lng float64) (st
 			}
 		}
 	}
-	
+
 	if friendlyName == "" {
 		friendlyName = r[0].FormattedAddress
 	}
-	
+
 	log.Printf("Reverse geocoding success: %s", friendlyName)
 	return friendlyName, nil
 }
 
+// GetCityLocation resolves a city query to its formatted address and coordinates.
 func (s *Service) GetCityLocation(ctx context.Context, city string) (string, float64, float64, error) {
 	log.Printf("Geocoding city: %s", city)
 	r, err := s.client.Geocode(ctx, &maps.GeocodingRequest{
@@ -104,7 +109,7 @@ func (s *Service) GetCityLocation(ctx context.Context, city string) (string, flo
 	formattedAddress := r[0].FormattedAddress
 	lat := r[0].Geometry.Location.Lat
 	lng := r[0].Geometry.Location.Lng
-	
+
 	log.Printf("Geocoding success: %s (Lat: %f, Lng: %f)", formattedAddress, lat, lng)
 
 	return formattedAddress, lat, lng, nil

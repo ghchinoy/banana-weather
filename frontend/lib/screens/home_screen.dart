@@ -18,7 +18,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _controller = TextEditingController();
-  bool _isInitializing = true;
   VideoPlayerController? _videoController;
   String? _currentVideoUrl;
   
@@ -39,11 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await Provider.of<WeatherProvider>(context, listen: false).fetchCurrentLocation();
-      if (mounted) {
-        setState(() {
-          _isInitializing = false;
-        });
-      }
     });
   }
 
@@ -78,9 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Dispose previous controller if any
     _disposeVideo();
 
-    // Use .network (String) instead of .networkUrl (Uri) to avoid Web "Unimplemented" issues
-    // ignore: deprecated_member_use
-    final controller = VideoPlayerController.network(url);
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     
     try {
       await controller.initialize();
@@ -94,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      print("Video initialization failed: $e");
+      debugPrint("Video initialization failed: $e");
     }
   }
 
@@ -109,6 +101,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final weatherProvider = Provider.of<WeatherProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
     final colorScheme = Theme.of(context).colorScheme;
+
+    // Toggle status phrase cycling during video animation
+    final isAnimating = weatherProvider.statusMessage != null &&
+        weatherProvider.statusMessage!.contains("Animating");
+    if (isAnimating) {
+      _startCycling();
+    } else {
+      _stopCycling();
+    }
 
     // Check for video update
     if (weatherProvider.videoUrl == null && _videoController != null) {
@@ -153,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   blurRadius: 20,
                   spreadRadius: 5,
                 ),
@@ -208,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
+                          color: Colors.black.withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: Colors.white10),
                         ),
@@ -250,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: () {
                         weatherProvider.fetchWeather(city: weatherProvider.city!);
                       },
-                      backgroundColor: Colors.white.withOpacity(0.2),
+                      backgroundColor: Colors.white.withValues(alpha: 0.2),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       child: const Icon(Icons.refresh),
@@ -284,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         
                         downloadFile(weatherProvider.videoUrl!, filename);
                       },
-                      backgroundColor: Colors.white.withOpacity(0.2),
+                      backgroundColor: Colors.white.withValues(alpha: 0.2),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       child: const Icon(Icons.download),

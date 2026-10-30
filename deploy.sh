@@ -11,13 +11,13 @@
 #
 # Configuration (.env):
 #   Required:
-#     GEMINI_API_KEY       - Vertex AI / Gemini API Key
-#     GOOGLE_MAPS_API_KEY  - Google Maps API Key (Geocoding)
+#     GOOGLE_MAPS_API_KEY  - Google Maps API Key (Geocoding), or GOOGLE_MAPS_SECRET (Secret Manager ref, e.g. google-maps-key:latest)
 #
 #   Optional:
 #     PROJECT_ID           - GCP Project ID (Defaults to active gcloud config)
 #     REGION               - Cloud Run Region (Defaults to 'us-central1')
 #     SERVICE_NAME         - Cloud Run Service Name (Defaults to 'banana-weather')
+#     MAX_INSTANCES        - Cloud Run max instances cap (Defaults to '10')
 #
 
 # Load environment variables from .env
@@ -64,9 +64,9 @@ if [ -z "$FIRESTORE_DATABASE" ]; then
   echo "Using default firestore database: $FIRESTORE_DATABASE"
 fi
 
-# 5. Check for Required API Keys
-if [ -z "$GOOGLE_MAPS_API_KEY" ]; then
-  echo "Error: Missing GOOGLE_MAPS_API_KEY in .env"
+# 5. Check for Required API Keys / Secret References
+if [ -z "$GOOGLE_MAPS_API_KEY" ] && [ -z "$GOOGLE_MAPS_SECRET" ]; then
+  echo "Error: Missing GOOGLE_MAPS_API_KEY (or GOOGLE_MAPS_SECRET) in .env"
   exit 1
 fi
 
@@ -88,14 +88,26 @@ echo "Image Location: $IMAGE_LOCATION | Veo Location: $VEO_LOCATION"
 echo "Bucket: $GENMEDIA_BUCKET"
 echo "Firestore DB: $FIRESTORE_DATABASE"
 
+MAX_INSTANCES="${MAX_INSTANCES:-10}"
+ENV_VARS="GOOGLE_CLOUD_PROJECT=$PROJECT_ID,IMAGE_LOCATION=$IMAGE_LOCATION,VEO_LOCATION=$VEO_LOCATION,GENMEDIA_BUCKET=$GENMEDIA_BUCKET,FIRESTORE_DATABASE=$FIRESTORE_DATABASE,GEMINI_IMAGE=${GEMINI_IMAGE:-gemini-nano-banana-2.1},VEO_MODEL=${VEO_MODEL:-veo-3.1-lite-generate-001}"
+
+if [ -z "$GOOGLE_MAPS_SECRET" ]; then
+  ENV_VARS="GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,$ENV_VARS"
+fi
+
 ARGS=(
   "$SERVICE_NAME"
   "--source" "."
   "--project" "$PROJECT_ID"
   "--region" "$REGION"
+  "--max-instances" "$MAX_INSTANCES"
   "--allow-unauthenticated"
-  "--set-env-vars" "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,IMAGE_LOCATION=$IMAGE_LOCATION,VEO_LOCATION=$VEO_LOCATION,GENMEDIA_BUCKET=$GENMEDIA_BUCKET,FIRESTORE_DATABASE=$FIRESTORE_DATABASE,GEMINI_IMAGE=${GEMINI_IMAGE:-gemini-3.1-flash-image},VEO_MODEL=${VEO_MODEL:-veo-3.1-lite-generate-001}"
+  "--set-env-vars" "$ENV_VARS"
 )
+
+if [ -n "$GOOGLE_MAPS_SECRET" ]; then
+  ARGS+=( "--set-secrets" "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_SECRET" )
+fi
 
 # If you created a specific SA, uncomment the line below:
 ARGS+=( "--service-account" "$SA_EMAIL" )

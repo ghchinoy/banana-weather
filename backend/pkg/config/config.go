@@ -1,3 +1,4 @@
+// Package config loads and validates runtime configuration from environment variables.
 package config
 
 import (
@@ -7,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Config holds the application configuration resolved from environment variables.
 type Config struct {
 	ProjectID string
 	// ImageLocation is the Vertex AI location used for Gemini 3 image models.
@@ -22,6 +24,12 @@ type Config struct {
 	GeminiImageModel string
 	VeoVideoModel    string
 }
+
+// DefaultModelIDs defines the default Vertex AI model identifiers for image and video generation.
+const (
+	DefaultImageModel = "gemini-nano-banana-2.1"
+	DefaultVideoModel = "veo-3.1-lite-generate-001"
+)
 
 // Load reads .env files and environment variables, validating required fields.
 func Load() (*Config, error) {
@@ -42,8 +50,8 @@ func Load() (*Config, error) {
 		DatabaseID:       getEnvOr("FIRESTORE_DATABASE", "(default)"),
 		GoogleMapsKey:    os.Getenv("GOOGLE_MAPS_API_KEY"),
 		Port:             getEnvOr("PORT", "8080"),
-		GeminiImageModel: getEnvOr("GEMINI_IMAGE", "gemini-3.1-flash-image"),
-		VeoVideoModel:    getEnvOr("VEO_MODEL", "veo-3.1-lite-generate-001"),
+		GeminiImageModel: getEnvOr("GEMINI_IMAGE", DefaultImageModel),
+		VeoVideoModel:    getEnvOr("VEO_MODEL", DefaultVideoModel),
 	}
 
 	if cfg.ProjectID == "" {

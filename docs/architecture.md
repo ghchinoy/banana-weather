@@ -15,12 +15,12 @@ Banana Weather is a "GenMedia" application that visualizes the atmospheric essen
 *   **Deployment:** Compiled to static HTML/JS/WASM and served by the Go backend.
 
 ### 2. The Temple (Backend)
-*   **Technology:** Go 1.25+
+*   **Technology:** Go 1.26+
 *   **Responsibility:**
-    *   **API Server:** Exposes `/api/weather` endpoint.
+    *   **API Server:** Exposes `/api/weather` and `/api/presets` endpoints.
     *   **Static Host:** Serves the compiled Flutter application.
     *   **Geocoding:** Uses Google Maps API to resolve user input (e.g., "Paris") to a formatted address (e.g., "Paris, France") and coordinates.
-    *   **GenAI Orchestrator:** Constructs the prompt and calls Vertex AI (Gemini 3.1 Flash Image / Nano Banana 2 by default, or Gemini 3 Pro Image / Nano Banana Pro) to generate the image, then Veo 3.1 to animate it.
+    *   **GenAI Orchestrator:** Constructs the prompt and calls Vertex AI (`gemini-nano-banana-2.1` by default, or `gemini-3.1-flash-image` / `gemini-3-pro-image`) to generate the image, then Veo 3.1 to animate it.
 *   **Deployment:** Containerized via Docker and deployed to Google Cloud Run.
 
 ## Data Flow

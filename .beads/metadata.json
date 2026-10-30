@@ -1,5 +1,7 @@
 {
-  "database": "beads.db",
-  "jsonl_export": "issues.jsonl",
-  "last_bd_version": "0.28.0"
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "banana_weather",
+  "project_id": "127239f1-1dad-434a-acd0-130a4c0328e2"
 }

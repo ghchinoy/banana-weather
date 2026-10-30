@@ -1,15 +1,33 @@
-## 2025-11-27
-- Document UI Hierarchy (banana-weather-9qs)
+## 2025-11-28
+- Implement GCS Storage Client (Backend) (banana-weather-255)
+- Implement Veo Video Generation Client (Backend) (banana-weather-mls)
+- Implement Looping Video Player (Frontend) (banana-weather-ik1)
+- Orchestrate Video Generation Pipeline (Backend) (banana-weather-4xa)
+- Implement ThemeProvider (banana-weather-qrl)
+- Refactor UI to use Theme Colors & Fonts (banana-weather-7ub)
+- Implement SSE Backend Handler (banana-weather-3cv)
+- Implement SSE Frontend Client (banana-weather-dwh)
+- Add Status AppBar to UI (banana-weather-8tk)
 - Refine Geocoding for Cleaner City Names (banana-weather-vij)
+- Document UI Hierarchy (banana-weather-9qs)
 - Infer Location on Startup (banana-weather-5rg)
 - Update Image Prompt from docs/info.md (banana-weather-by5)
-- Implement Frontend UI & Integration (banana-weather-kgi)
 - Implement Geocoding & GenAI in Backend (banana-weather-54q)
-- Setup Frontend (Flutter) (banana-weather-w66)
+- Implement Frontend UI & Integration (banana-weather-kgi)
 - Setup Backend (Go) (banana-weather-toj)
+- Setup Frontend (Flutter) (banana-weather-w66)
 
-## 2025-11-28
-- Refactor GenerateImage for Context Injection (banana-weather-4t7)
+## 2025-11-29
+- Update Frontend Logic for Presets (banana-weather-0h5.6)
+- Epic: Firestore Foundation (banana-weather-b63)
+- Epic: Smart Caching & User Limits (banana-weather-0h5)
+- Design Firestore Schema (banana-weather-b63.7)
+- Implement Firestore Client (Go) (banana-weather-b63.8)
+- Migrate Presets to Firestore (banana-weather-b63.9)
+- Implement TTL Caching in Handler (banana-weather-0h5.5)
+- Update CLI to use Firestore (banana-weather-b63.12)
+- Document Firestore Setup (banana-weather-b63.13)
+- Implement TTL Caching in Handler (banana-weather-0h5.7)
 - Add App Bar with Theme Toggle (banana-weather-796)
 - Add Location Presets/History (banana-weather-3l0)
 - Implement Status Message Cycling (banana-weather-5l5)
@@ -21,51 +39,31 @@
 - Update CLI for Idempotency and Categories (banana-weather-jrv)
 - Update PresetDrawer for Categories (banana-weather-r6f)
 - Generate Expanded Content CSV (banana-weather-psj)
+- Refactor GenerateImage for Context Injection (banana-weather-4t7)
 - Implement Manual HTTP LRO Polling for Veo (banana-weather-kq2)
 - Switch Veo Polling to aiplatform/v1beta1 SDK (banana-weather-h8m)
 - Handle Inline Video Data & Upload to GCS (banana-weather-3ni)
 - Fix Nested JSON Parsing for Veo Result (banana-weather-ihu)
-- Add My Location to Drawer (banana-weather-8ym)
 - Move Geolocation Logic to Provider (banana-weather-alh)
-- Implement Presets Drawer in Frontend (banana-weather-0n2)
-- Implement GET /api/presets Backend (banana-weather-psa)
+- Add My Location to Drawer (banana-weather-8ym)
 - Design Presets JSON Schema (banana-weather-26k)
+- Implement GET /api/presets Backend (banana-weather-psa)
+- Implement Presets Drawer in Frontend (banana-weather-0n2)
 - Add Regenerate Button to UI (banana-weather-yb6)
 - Add Non-Blocking Status Indicator for Video Gen (banana-weather-cfy)
 - Fix Video Player Initialization Trigger (banana-weather-9r1)
-- Orchestrate Video Generation Pipeline (Backend) (banana-weather-4xa)
-- Implement Looping Video Player (Frontend) (banana-weather-ik1)
-- Implement Veo Video Generation Client (Backend) (banana-weather-mls)
-- Implement GCS Storage Client (Backend) (banana-weather-255)
-- Refactor UI to use Theme Colors & Fonts (banana-weather-7ub)
-- Implement ThemeProvider (banana-weather-qrl)
-- Add Status AppBar to UI (banana-weather-8tk)
-- Implement SSE Frontend Client (banana-weather-dwh)
-- Implement SSE Backend Handler (banana-weather-3cv)
 
-## 2025-11-29
-- Update Frontend Logic for Presets (banana-weather-0h5.6)
-- Implement TTL Caching in Handler (banana-weather-0h5.5)
-- Migrate Presets to Firestore (banana-weather-b63.9)
-- Implement Firestore Client (Go) (banana-weather-b63.8)
-- Design Firestore Schema (banana-weather-b63.7)
-- Epic: Smart Caching & User Limits (banana-weather-0h5)
-- Epic: Firestore Foundation (banana-weather-b63)
-- Update CLI to use Firestore (banana-weather-b63.12)
-- Implement TTL Caching in Handler (banana-weather-0h5.7)
-- Document Firestore Setup (banana-weather-b63.13)
-
-## 2025-12-03
+## 2025-12-04
 - Implement Admin CLI for Stats and Refresh (banana-weather-97h.5)
 - Cleanup obsolete presets.csv (banana-weather-5bc.2)
 
-## 2025-12-04
+## 2025-12-05
 - Pass LastUpdated Timestamp (banana-weather-4cq.3)
 - Epic: Video Download Feature (banana-weather-4cq)
 - Add Download Button to UI (banana-weather-4cq.2)
 - Implement Web Download Logic (banana-weather-4cq.1)
 
-## 2025-12-07
+## 2025-12-08
 - Document CLI (banana-weather-sk2)
 - Refactor backend CLI tools to use Cobra (Epic) (banana-weather-0tq)
 - Cleanup and Documentation (banana-weather-0tq.10)
@@ -76,7 +74,7 @@
 - Refactor backend CLI tools to use Cobra (banana-weather-oi4)
 - Refactor GenerateImage for random prompt selection (banana-weather-7fx)
 
-## 2025-12-08
+## 2025-12-09
 - Refactor Backend Architecture (banana-weather-6nn)
 - Add Backend Unit Tests (banana-weather-6nn.5)
 - Refactor Generate Command (banana-weather-6nn.3)
@@ -89,4 +87,14 @@
 - Interactive Generation Flow (banana-weather-97h.3)
 - Location List & Filtering (banana-weather-97h.2)
 - TUI Foundation & Navigation (banana-weather-97h.1)
+
+## 2026-10-30
+- Apply Go readability standards and Agent-Aware CLI improvements (banana-weather-l7a.4)
+- Upgrade Flutter Web dependencies and migrate off deprecated dart:html (banana-weather-l7a.2)
+- Upgrade Go 1.26 and backend module dependencies (banana-weather-l7a.1)
+- Epic: Code Health, Dependency Upgrades & Security Hardening (banana-weather-l7a)
+- Filter interim Thought draft images and guard GoogleSearch on lite models (banana-weather-bav.2)
+- Update default GEMINI_IMAGE model to gemini-nano-banana-2.1 (banana-weather-bav.1)
+- Epic: Upgrade GenAI Model Defaults & Nano Banana 2.1 Compatibility (banana-weather-bav)
+- Harden API, SSE, Docker, IAM, and Cloud Run deployment security (banana-weather-l7a.3)
 

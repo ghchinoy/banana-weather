@@ -15,9 +15,14 @@
 Ensure you have a `.env` file in the project root:
 
 ```bash
-GEMINI_API_KEY="your-vertex-ai-key"
+GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+IMAGE_LOCATION="global"
+VEO_LOCATION="us-central1"
 GOOGLE_MAPS_API_KEY="your-maps-key"
-PROJECT_ID="your-gcp-project-id"
+GENMEDIA_BUCKET="your-gcs-bucket-name"
+FIRESTORE_DATABASE="banana-weather"
+GEMINI_IMAGE="gemini-3.1-flash-image"
+VEO_MODEL="veo-3.1-lite-generate-001"
 ```
 
 ## Deployment Steps

@@ -1,3 +1,4 @@
+// Package storage manages uploading and reading media objects in Google Cloud Storage.
 package storage
 
 import (
@@ -10,12 +11,13 @@ import (
 	"cloud.google.com/go/storage"
 )
 
+// Service wraps a Google Cloud Storage client bound to a target media bucket.
 type Service struct {
 	client     *storage.Client
 	bucketName string
-	projectID  string
 }
 
+// NewService creates a new GCS storage Service for the given bucket name.
 func NewService(ctx context.Context, bucketName string) (*Service, error) {
 	if bucketName == "" {
 		return nil, fmt.Errorf("GENMEDIA_BUCKET is empty")
@@ -36,7 +38,7 @@ func NewService(ctx context.Context, bucketName string) (*Service, error) {
 func (s *Service) ReadObject(ctx context.Context, fileName string) ([]byte, error) {
 	bucket := s.client.Bucket(s.bucketName)
 	obj := bucket.Object(fileName)
-	
+
 	r, err := obj.NewReader(ctx)
 	if err != nil {
 		return nil, err
@@ -52,16 +54,16 @@ func (s *Service) UploadImage(ctx context.Context, imageBase64 string, fileName 
 	if err != nil {
 		return "", "", fmt.Errorf("invalid base64: %w", err)
 	}
-	// Reuse UploadBytes logic? 
+	// Reuse UploadBytes logic?
 	// Let's keep it distinct for now or refactor.
 	// To avoid duplication, let's just call UploadBytes.
 	// But UploadBytes returns one URL. UploadImage returns TWO (gsURI for Veo, Public for Frontend).
 	// We need gsURI for Veo.
-	
+
 	// Inline implementation for Image (returns GS URI)
 	bucket := s.client.Bucket(s.bucketName)
 	obj := bucket.Object(fileName)
-	
+
 	w := obj.NewWriter(ctx)
 	w.ContentType = "image/png"
 	if _, err := w.Write(data); err != nil {
@@ -82,7 +84,7 @@ func (s *Service) UploadImage(ctx context.Context, imageBase64 string, fileName 
 func (s *Service) UploadBytes(ctx context.Context, data []byte, fileName string, mimeType string) (string, error) {
 	bucket := s.client.Bucket(s.bucketName)
 	obj := bucket.Object(fileName)
-	
+
 	w := obj.NewWriter(ctx)
 	w.ContentType = mimeType
 	if _, err := w.Write(data); err != nil {

@@ -33,10 +33,12 @@ Generate presets or create single location content (Image + Video).
 *   `--city`: City query for the prompt (e.g., `Paris`).
 *   `--style`: Prompt Style (0=Random, 1=Classic, 2=Drink).
 *   `--force`: Overwrite existing presets.
+*   `--dry-run`: Validate inputs and preview generation plan without calling Vertex AI or writing to GCS/Firestore.
 
 **Examples:**
 ```bash
-# Batch mode
+# Batch mode (preview first, then execute)
+./banana generate --csv presets_expanded.csv --dry-run
 ./banana generate --csv presets_expanded.csv
 
 # Single mode (Drink Style)
@@ -48,16 +50,20 @@ Manage the running system.
 
 **Subcommands:**
 *   `stats`: Show database statistics (Total locations, presets, last activity).
+    *   `--json`: Output statistics in JSON format.
 *   `list`: List top locations.
     *   `--limit`: Max results (default 20).
     *   `--type`: Filter (`all`, `preset`, `user`).
+    *   `--json`: Output locations in JSON format.
 *   `refresh`: Re-generate media for a specific location ID.
     *   `--id`: Location ID.
     *   `--style`: Prompt Style (0=Random, 1=Classic, 2=Drink).
+    *   `--dry-run`: Validate location exists without regenerating media.
 
 **Example:**
 ```bash
-./banana admin stats
+./banana admin stats --json
+./banana admin list --type preset --limit 10 --json
 ./banana admin refresh --id "london"
 ```
 
@@ -66,5 +72,6 @@ Migrates legacy `presets.json` data from GCS to the Firestore database.
 
 **Usage:**
 ```bash
+./banana migrate --dry-run
 ./banana migrate
 ```

@@ -54,6 +54,12 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --role="roles/datastore.user" \
     --condition=None --quiet
 
+# Storage Object Admin (for uploading generated images and Veo videos to GCS)
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/storage.objectAdmin" \
+    --condition=None --quiet
+
 echo "------------------------------------------------"
 echo "✅ Setup Complete!"
 echo ""

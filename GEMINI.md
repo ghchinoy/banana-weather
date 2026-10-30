@@ -3,7 +3,7 @@
 *A GenMedia application that visualizes the current "vibe" of a city using Generative AI.*
 
 ## Project Overview
-Banana Weather is a simple yet powerful application that demonstrates the "Oracle & Temple" architecture. It allows users to select a city and generates a high-fidelity, 9:16 artistic representation of that location's current essence using Google's Gemini image models via Vertex AI. The default is **Gemini 3.1 Flash Image (Nano Banana 2)** (`gemini-3.1-flash-image`, GA); you can switch to **Gemini 3 Pro Image (Nano Banana Pro)** (`gemini-3-pro-image`) via the `GEMINI_IMAGE` env var for higher fidelity.
+Banana Weather is a simple yet powerful application that demonstrates the "Oracle & Temple" architecture. It allows users to select a city and generates a high-fidelity, 9:16 artistic representation of that location's current essence using Google's Gemini image models via Vertex AI. The default is **Gemini Nano Banana 2.1** (`gemini-nano-banana-2.1`); you can switch to **Gemini 3.1 Flash Image (Nano Banana 2)** (`gemini-3.1-flash-image`), **Gemini 3 Pro Image (Nano Banana Pro)** (`gemini-3-pro-image`), or **Gemini 3.1 Flash-Lite Image** (`gemini-3.1-flash-lite-image`) via the `GEMINI_IMAGE` env var.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ The system follows a client-server model:
     *   **Role:** API Server, Static File Host, and GenAI Orchestrator.
     *   **Responsibilities:**
         *   **Geocoding:** Google Maps API for location resolution and reverse geocoding.
-        *   **Image Generation:** Vertex AI (`gemini-3.1-flash-image` by default, or `gemini-3-pro-image`) using `GenerateContent`.
+        *   **Image Generation:** Vertex AI (`gemini-nano-banana-2.1` by default, or `gemini-3.1-flash-image` / `gemini-3-pro-image`) using `GenerateContent`.
         *   **Serving:** Hosts the compiled Flutter Web application.
 
 2.  **The Frontend (Flutter):** The user interface.
@@ -28,7 +28,7 @@ The system follows a client-server model:
 
 | Component | Technology | Key Libraries |
 | :--- | :--- | :--- |
-| **Backend** | Go 1.25+ | `chi`, `google.golang.org/genai`, `googlemaps.github.io/maps` |
+| **Backend** | Go 1.26+ | `chi`, `google.golang.org/genai`, `googlemaps.github.io/maps` |
 | **Frontend** | Flutter (Dart) | `provider`, `google_fonts`, `geolocator` |
 | **Cloud** | Google Cloud Run | Vertex AI, Maps Platform |
 
@@ -42,13 +42,13 @@ GOOGLE_CLOUD_PROJECT="<your-gcp-project>"
 IMAGE_LOCATION="global"      # Vertex location for Gemini 3 image models. MUST be global (also us/eu). Falls back to GOOGLE_CLOUD_LOCATION, then "global".
 VEO_LOCATION="us-central1"   # Vertex region for Veo. MUST be a region (Veo does NOT run at global).
 GOOGLE_MAPS_API_KEY="<your-maps-key>"
-GEMINI_IMAGE="gemini-3.1-flash-image"        # Optional: Override the image model (e.g. gemini-3-pro-image for higher fidelity, or gemini-3.1-flash-lite-image for lower cost/latency)
+GEMINI_IMAGE="gemini-nano-banana-2.1"        # Optional: Override the image model (e.g. gemini-3.1-flash-image, gemini-3-pro-image, or gemini-3.1-flash-lite-image)
 VEO_MODEL="veo-3.1-lite-generate-001"        # Optional: Override the video model (e.g. veo-3.1-generate-001, veo-3.1-fast-generate-001)
 PORT=8080
 ```
 
-> **Locations differ per service.** Gemini 3 image models are served at `global`
-> (also `us`/`eu`) — never a regular region. Veo requires a **regional** endpoint
+> **Locations differ per service.** Gemini 3 / Nano Banana image models are served at `global`
+> (also `us`/`eu` for 3.1 Flash) — never a regular region (`gemini-nano-banana-2.1` is `global` only). Veo requires a **regional** endpoint
 > (default `us-central1`) and does **not** run at `global`. A single shared location
 > cannot serve both, so the backend builds one Vertex client per location:
 > `IMAGE_LOCATION` for images and `VEO_LOCATION` for video. The Cloud Run deploy
@@ -62,7 +62,7 @@ PORT=8080
 > (Pre-GA Offerings Terms, no retirement SLA). It is retained intentionally for cost.
 > For a GA posture, set `VEO_MODEL=veo-3.1-generate-001` (quality) or
 > `veo-3.1-fast-generate-001` (latency/cost). Image models
-> (`gemini-3.1-flash-image`, `gemini-3-pro-image`, `gemini-3.1-flash-lite-image`) are GA.
+> (`gemini-3.1-flash-image`, `gemini-nano-banana-2.1`, `gemini-3-pro-image`, `gemini-3.1-flash-lite-image`) are supported; note that `gemini-nano-banana-2.1` emits interim `Thought: true` draft images (filtered out by `extractFinalImageBytes`), and `gemini-3.1-flash-lite-image` does not support Google Search grounding (`Tools` is automatically omitted for `lite` models).
 
 ### 2. Running Local (Dev)
 Use the helper script to build frontend and run backend:

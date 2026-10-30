@@ -23,7 +23,6 @@ class _PresetDrawerState extends State<PresetDrawer> {
   @override
   Widget build(BuildContext context) {
     final weatherProvider = Provider.of<WeatherProvider>(context);
-    final colorScheme = Theme.of(context).colorScheme;
 
     // Group presets by category
     final Map<String, List<dynamic>> grouped = {};
@@ -39,13 +38,13 @@ class _PresetDrawerState extends State<PresetDrawer> {
     final sortedKeys = grouped.keys.toList()..sort();
 
     return Drawer(
-      backgroundColor: Colors.black.withOpacity(0.9),
+      backgroundColor: Colors.black.withValues(alpha: 0.9),
       child: Column(
         children: [
           DrawerHeader(
             decoration: BoxDecoration(
               color: Colors.black,
-              border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1))),
+              border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
             ),
             child: Center(
               child: Text(
@@ -69,7 +68,7 @@ class _PresetDrawerState extends State<PresetDrawer> {
               Provider.of<WeatherProvider>(context, listen: false).fetchCurrentLocation();
             },
           ),
-          Divider(color: Colors.white.withOpacity(0.1), height: 1),
+          Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
           Expanded(
             child: ListView.builder(
               itemCount: sortedKeys.length,

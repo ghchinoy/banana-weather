@@ -246,3 +246,11 @@ func TestHandleGetWeather_CacheHit_SkipsGeneration(t *testing.T) {
 		t.Errorf("GenerateVideo called %d times on cache hit, want 0", genai.videoCalls)
 	}
 }
+
+func TestSanitizeSSEField_StripsCRLF(t *testing.T) {
+	got := sanitizeSSEField("London\r\nevent: injected\ndata: payload")
+	want := "London  event: injected data: payload"
+	if got != want {
+		t.Errorf("sanitizeSSEField(multiline) = %q, want %q", got, want)
+	}
+}

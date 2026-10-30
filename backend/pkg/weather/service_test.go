@@ -61,13 +61,13 @@ func (m *MockDB) UpsertLocation(ctx context.Context, loc database.Location) erro
 // -- Tests --
 
 func TestGetWeatherFlow_CacheHit(t *testing.T) {
-	ctx := context.Background()
-	
+	ctx := t.Context()
+
 	// Setup Mocks
 	maps := &MockMapService{ResolvedCity: "Paris, France"}
 	genai := &MockGenAI{}
 	storage := &MockStorage{}
-	
+
 	// Pre-existing location in DB (Fresh)
 	db := &MockDB{
 		Loc: &database.Location{
@@ -86,9 +86,8 @@ func TestGetWeatherFlow_CacheHit(t *testing.T) {
 		events = append(events, event)
 	}
 
-	err := svc.GetWeatherFlow(ctx, "Paris", "", "", callback)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+	if err := svc.GetWeatherFlow(ctx, "Paris", "", "", callback); err != nil {
+		t.Fatalf("GetWeatherFlow(Paris) = %v, want nil", err)
 	}
 
 	// Verify "Loading cached forecast..." event
@@ -99,20 +98,20 @@ func TestGetWeatherFlow_CacheHit(t *testing.T) {
 		}
 	}
 	if !foundCacheMsg {
-		t.Error("Expected 'result' event for cache hit")
+		t.Errorf("GetWeatherFlow(Paris) events = %v, want 'result' event for cache hit", events)
 	}
 }
 
 func TestGetWeatherFlow_CacheMiss(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Setup Mocks
 	maps := &MockMapService{ResolvedCity: "London, UK"}
 	genai := &MockGenAI{ImageBase64: "base64data", VideoURI: "gs://bucket/video.mp4"}
 	storage := &MockStorage{PublicURL: "http://storage/image.png", GsURI: "gs://bucket/image.png"}
-	
+
 	// DB returns error (Not Found)
-	db := &MockDB{Err: fmt.Errorf("not found")} // Simulate 404 behavior, usually err!=nil
+	db := &MockDB{Err: fmt.Errorf("not found")}
 
 	svc := NewService(maps, genai, storage, db)
 
@@ -121,14 +120,63 @@ func TestGetWeatherFlow_CacheMiss(t *testing.T) {
 		events = append(events, event)
 	}
 
-	err := svc.GetWeatherFlow(ctx, "London", "", "", callback)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+	if err := svc.GetWeatherFlow(ctx, "London", "", "", callback); err != nil {
+		t.Fatalf("GetWeatherFlow(London) = %v, want nil", err)
 	}
 
 	// Verify events
 	expected := []string{"status", "status", "status", "result", "status", "status", "status", "video"}
 	if len(events) < len(expected) {
-		t.Errorf("Expected at least %d events, got %d", len(expected), len(events))
+		t.Errorf("GetWeatherFlow(London) len(events) = %d, want >= %d", len(events), len(expected))
+	}
+}
+
+func TestGetWeatherFlow_InvalidCoordinates(t *testing.T) {
+	ctx := t.Context()
+	svc := NewService(&MockMapService{}, &MockGenAI{}, &MockStorage{}, &MockDB{})
+
+	var errorMsg string
+	callback := func(event, data string) {
+		if event == "error" {
+			errorMsg = data
+		}
+	}
+
+	if err := svc.GetWeatherFlow(ctx, "", "999.0", "-122.4", callback); err == nil {
+		t.Fatal("GetWeatherFlow(lat=999.0) = nil, want error for out-of-range latitude")
+	}
+	if errorMsg != "Invalid coordinates provided." {
+		t.Errorf("GetWeatherFlow(lat=999.0) error event = %q, want %q", errorMsg, "Invalid coordinates provided.")
+	}
+}
+
+func TestGetWeatherFlow_DoesNotLeakSensitiveMapsError(t *testing.T) {
+	ctx := t.Context()
+	maps := &MockMapService{Err: fmt.Errorf("Get https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSecretKey123: dial tcp timeout")}
+	svc := NewService(maps, &MockGenAI{}, &MockStorage{}, &MockDB{})
+
+	var errorMsg string
+	callback := func(event, data string) {
+		if event == "error" {
+			errorMsg = data
+		}
+	}
+
+	if err := svc.GetWeatherFlow(ctx, "Atlantis", "", "", callback); err == nil {
+		t.Fatal("GetWeatherFlow(Atlantis) = nil, want error from Maps service")
+	}
+	if errorMsg != "Failed to find city." {
+		t.Errorf("GetWeatherFlow(Atlantis) error event = %q, want sanitized %q", errorMsg, "Failed to find city.")
+	}
+}
+
+func TestValidateLocationID(t *testing.T) {
+	if err := ValidateLocationID("tokyo_japan"); err != nil {
+		t.Errorf("ValidateLocationID(\"tokyo_japan\") = %v, want nil", err)
+	}
+	for _, bad := range []string{"", "../secret", "foo/bar", "foo\\bar"} {
+		if err := ValidateLocationID(bad); err == nil {
+			t.Errorf("ValidateLocationID(%q) = nil, want error", bad)
+		}
 	}
 }

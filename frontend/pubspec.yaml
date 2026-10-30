@@ -9,11 +9,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  geolocator: ^14.0.2
-  google_fonts: ^6.3.2
+  geolocator: ^14.1.2
+  google_fonts: ^6.3.3
   http: ^1.6.0
   provider: ^6.1.5+1
-  video_player: ^2.10.1
+  video_player: ^2.14.1
+  web: ^1.1.2
 
 dev_dependencies:
   flutter_test:

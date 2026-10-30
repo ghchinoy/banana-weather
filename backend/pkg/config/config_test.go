@@ -7,40 +7,47 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	// Setup Environment
+	os.Clearenv()
+	t.Cleanup(os.Clearenv)
+
 	os.Setenv("GOOGLE_CLOUD_PROJECT", "test-project")
 	os.Setenv("GENMEDIA_BUCKET", "test-bucket")
 	os.Setenv("GOOGLE_MAPS_API_KEY", "test-key")
 	os.Setenv("PORT", "9090")
-	defer os.Clearenv()
 
 	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("Load() failed: %v", err)
+		t.Fatalf("Load() error = %v, want nil", err)
 	}
 
 	if cfg.ProjectID != "test-project" {
-		t.Errorf("Expected ProjectID 'test-project', got '%s'", cfg.ProjectID)
+		t.Errorf("Load().ProjectID = %q, want %q", cfg.ProjectID, "test-project")
 	}
 	if cfg.BucketName != "test-bucket" {
-		t.Errorf("Expected BucketName 'test-bucket', got '%s'", cfg.BucketName)
+		t.Errorf("Load().BucketName = %q, want %q", cfg.BucketName, "test-bucket")
 	}
 	if cfg.GoogleMapsKey != "test-key" {
-		t.Errorf("Expected GoogleMapsKey 'test-key', got '%s'", cfg.GoogleMapsKey)
+		t.Errorf("Load().GoogleMapsKey = %q, want %q", cfg.GoogleMapsKey, "test-key")
 	}
 	if cfg.Port != "9090" {
-		t.Errorf("Expected Port '9090', got '%s'", cfg.Port)
+		t.Errorf("Load().Port = %q, want %q", cfg.Port, "9090")
+	}
+	if cfg.GeminiImageModel != DefaultImageModel {
+		t.Errorf("Load().GeminiImageModel = %q, want %q", cfg.GeminiImageModel, DefaultImageModel)
+	}
+	if cfg.VeoVideoModel != DefaultVideoModel {
+		t.Errorf("Load().VeoVideoModel = %q, want %q", cfg.VeoVideoModel, DefaultVideoModel)
 	}
 }
 
 func TestLoadMissingRequired(t *testing.T) {
 	os.Clearenv()
-	// Set only one
+	t.Cleanup(os.Clearenv)
+
 	os.Setenv("GOOGLE_CLOUD_PROJECT", "test-project")
 
-	_, err := Load()
-	if err == nil {
-		t.Error("Expected error when missing required fields, got nil")
+	if _, err := Load(); err == nil {
+		t.Error("Load() with missing required env vars = nil, want non-nil error")
 	}
 }
 
